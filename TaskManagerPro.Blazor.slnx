@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TaskManagerPro.Blazor.Application/TaskManagerPro.Blazor.Application.csproj" />
+    <Project Path="src/TaskManagerPro.Blazor.Domain/TaskManagerPro.Blazor.Domain.csproj" />
+    <Project Path="src/TaskManagerPro.Blazor.Infrastructure/TaskManagerPro.Blazor.Infrastructure.csproj" />
+    <Project Path="src/TaskManagerPro.Blazor.Web/TaskManagerPro.Blazor.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TaskManagerPro.Blazor.Tests/TaskManagerPro.Blazor.Tests.csproj" />
+  </Folder>
+</Solution>
