@@ -9,6 +9,8 @@ namespace TaskManagerPro.Blazor.Domain.Entities;
 /// </summary>
 public class Notification : BaseEntity
 {
+    private NotificationStatus _status = NotificationStatus.Unread;
+
     /// <summary>
     /// Required by EF Core for materialisation. Not intended for direct use.
     /// </summary>
@@ -25,7 +27,7 @@ public class Notification : BaseEntity
         Message = message;
         UserId = userId;
         TaskItemId = taskItemId;
-        Status = NotificationStatus.Unread;
+        _status = NotificationStatus.Unread;
     }
 
     /// <summary>
@@ -39,10 +41,10 @@ public class Notification : BaseEntity
     public string Message { get; private set; } = string.Empty;
 
     /// <summary>
-    /// Read/unread state. Internal setter lets the Application layer mark as Read
-    /// without allowing arbitrary external mutation.
+    /// Read/unread state. EF Core writes via _status backing field;
+    /// the Application layer is the only intended writer via MarkAsRead commands.
     /// </summary>
-    public NotificationStatus Status { get; internal set; } = NotificationStatus.Unread;
+    public NotificationStatus Status => _status;
 
     /// <summary>
     /// Foreign key to the recipient user.

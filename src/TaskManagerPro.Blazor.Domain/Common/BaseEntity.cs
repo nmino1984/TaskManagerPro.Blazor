@@ -6,6 +6,8 @@ namespace TaskManagerPro.Blazor.Domain.Common;
 /// </summary>
 public abstract class BaseEntity
 {
+    private DateTime _updatedAt = DateTime.UtcNow;
+
     /// <summary>
     /// Unique identifier assigned on creation. Private setter prevents external reassignment.
     /// </summary>
@@ -17,10 +19,10 @@ public abstract class BaseEntity
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// UTC timestamp updated by the Infrastructure layer on every save operation.
-    /// Internal setter restricts writes to the same assembly.
+    /// UTC timestamp stamped by the DbContext on every save. Readonly to outside callers;
+    /// EF Core hydrates it via the _updatedAt backing field configured in OnModelCreating.
     /// </summary>
-    public DateTime UpdatedAt { get; internal set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt => _updatedAt;
 
     /// <summary>
     /// Soft-delete flag. When true the entity is excluded from normal queries

@@ -9,6 +9,9 @@ namespace TaskManagerPro.Blazor.Domain.Entities;
 /// </summary>
 public class TaskItem : BaseEntity
 {
+    private WorkTaskStatus _status = WorkTaskStatus.Pending;
+    private DateTime? _dueDate;
+
     /// <summary>
     /// Required by EF Core for materialisation. Not intended for direct use.
     /// </summary>
@@ -22,10 +25,10 @@ public class TaskItem : BaseEntity
     {
         Title = title;
         Description = description;
-        DueDate = dueDate;
+        _dueDate = dueDate;
         Priority = priority;
         UserId = userId;
-        Status = WorkTaskStatus.Pending;
+        _status = WorkTaskStatus.Pending;
     }
 
     /// <summary>
@@ -39,10 +42,10 @@ public class TaskItem : BaseEntity
     public string Description { get; private set; } = string.Empty;
 
     /// <summary>
-    /// Optional deadline. Internal setter allows the Application layer to reschedule
-    /// without exposing mutation to external callers.
+    /// Optional deadline. EF Core writes via _dueDate backing field;
+    /// exposed as readonly to prevent arbitrary mutation from outside the aggregate.
     /// </summary>
-    public DateTime? DueDate { get; internal set; }
+    public DateTime? DueDate => _dueDate;
 
     /// <summary>
     /// Urgency level used for sorting and visual prominence in the UI.
@@ -50,10 +53,10 @@ public class TaskItem : BaseEntity
     public TaskPriority Priority { get; private set; } = TaskPriority.Medium;
 
     /// <summary>
-    /// Lifecycle state of the task. Internal setter enforces that transitions
-    /// happen only through Application layer commands.
+    /// Lifecycle state of the task. EF Core writes via _status backing field;
+    /// transitions are driven exclusively by Application layer commands.
     /// </summary>
-    public WorkTaskStatus Status { get; internal set; } = WorkTaskStatus.Pending;
+    public WorkTaskStatus Status => _status;
 
     /// <summary>
     /// Foreign key to the owning user.

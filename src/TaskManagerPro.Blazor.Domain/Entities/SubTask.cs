@@ -9,6 +9,8 @@ namespace TaskManagerPro.Blazor.Domain.Entities;
 /// </summary>
 public class SubTask : BaseEntity
 {
+    private bool _isCompleted;
+
     /// <summary>
     /// Required by EF Core for materialisation. Not intended for direct use.
     /// </summary>
@@ -23,7 +25,7 @@ public class SubTask : BaseEntity
         Title = title;
         Description = description;
         TaskItemId = taskItemId;
-        IsCompleted = false;
+        _isCompleted = false;
     }
 
     /// <summary>
@@ -37,10 +39,10 @@ public class SubTask : BaseEntity
     public string Description { get; private set; } = string.Empty;
 
     /// <summary>
-    /// Indicates whether this step has been finished. Internal setter lets the
-    /// Application layer toggle completion without exposing it to API callers.
+    /// Indicates whether this step has been finished. EF Core writes via _isCompleted
+    /// backing field; toggled by Application layer commands only.
     /// </summary>
-    public bool IsCompleted { get; internal set; } = false;
+    public bool IsCompleted => _isCompleted;
 
     /// <summary>
     /// Foreign key to the parent task.

@@ -10,6 +10,9 @@ namespace TaskManagerPro.Blazor.Domain.Entities;
 /// </summary>
 public class Milestone : BaseEntity
 {
+    private MilestoneStatus _status = MilestoneStatus.Pending;
+    private DateTime _targetDate;
+
     /// <summary>
     /// Required by EF Core for materialisation. Not intended for direct use.
     /// </summary>
@@ -23,9 +26,9 @@ public class Milestone : BaseEntity
     {
         Title = title;
         Description = description;
-        TargetDate = targetDate;
+        _targetDate = targetDate;
         TaskItemId = taskItemId;
-        Status = MilestoneStatus.Pending;
+        _status = MilestoneStatus.Pending;
     }
 
     /// <summary>
@@ -39,15 +42,16 @@ public class Milestone : BaseEntity
     public string Description { get; private set; } = string.Empty;
 
     /// <summary>
-    /// The date by which this milestone should be reached.
+    /// The date by which this milestone should be reached. EF Core writes via
+    /// _targetDate backing field; immutable after construction to enforce planning discipline.
     /// </summary>
-    public DateTime TargetDate { get; private set; }
+    public DateTime TargetDate => _targetDate;
 
     /// <summary>
-    /// Lifecycle state of the milestone. Internal setter allows background jobs
-    /// to mark milestones as Overdue without exposing mutation to API callers.
+    /// Lifecycle state of the milestone. EF Core writes via _status backing field;
+    /// background jobs may transition to Overdue when TargetDate is exceeded.
     /// </summary>
-    public MilestoneStatus Status { get; internal set; } = MilestoneStatus.Pending;
+    public MilestoneStatus Status => _status;
 
     /// <summary>
     /// Foreign key to the parent task.
