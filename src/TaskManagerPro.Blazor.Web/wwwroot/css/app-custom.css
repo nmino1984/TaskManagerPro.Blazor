@@ -1,0 +1,114 @@
+/* ═══════════════════════════════════════════════
+   TaskManager Pro — Custom CSS
+   Works alongside MudBlazor's theme variables.
+   ═══════════════════════════════════════════════ */
+
+/* ── CSS Variables ── */
+:root {
+    --app-primary:            #594AE2;
+    --app-primary-dark:       #3D2FCC;
+    --app-primary-light:      #7B6FF0;
+
+    --app-success:            #2ECC71;
+    --app-warning:            #F39C12;
+    --app-danger:             #E74C3C;
+    --app-info:               #3498DB;
+
+    --app-sidebar-bg:         #1E1E2E;
+    --app-sidebar-border:     rgba(255,255,255,0.08);
+    --app-sidebar-header-color: rgba(255,255,255,0.4);
+
+    --app-content-bg:         #F5F5F5;
+
+    --app-card-bg:            #FFFFFF;
+    --app-card-radius:        12px;
+    --app-card-shadow:        0 2px 8px rgba(0,0,0,0.08);
+    --app-card-shadow-hover:  0 6px 20px rgba(89,74,226,0.18);
+
+    --app-transition:         0.2s ease;
+}
+
+/* ── Task cards ── */
+.task-card {
+    background: var(--app-card-bg);
+    border-radius: var(--app-card-radius);
+    box-shadow: var(--app-card-shadow);
+    padding: 1rem 1.25rem;
+    transition: box-shadow var(--app-transition), transform var(--app-transition);
+    border-left: 4px solid var(--app-primary);
+    cursor: pointer;
+}
+
+.task-card:hover {
+    box-shadow: var(--app-card-shadow-hover);
+    transform: translateY(-2px);
+}
+
+.task-card.priority-low    { border-left-color: var(--app-info); }
+.task-card.priority-medium { border-left-color: var(--app-success); }
+.task-card.priority-high   { border-left-color: var(--app-warning); }
+.task-card.priority-critical { border-left-color: var(--app-danger); }
+
+.task-card .task-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.task-card .task-meta {
+    font-size: 0.8rem;
+    color: rgba(0,0,0,0.55);
+}
+
+/* ── Status chips ── */
+.status-pending   { background-color: rgba(52,152,219,0.12); color: var(--app-info); }
+.status-inprogress { background-color: rgba(243,156,18,0.12); color: var(--app-warning); }
+.status-completed  { background-color: rgba(46,204,113,0.12); color: var(--app-success); }
+.status-cancelled  { background-color: rgba(231,76,60,0.12);  color: var(--app-danger); }
+
+/* ── Auth pages (Login / Register) ── */
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--app-primary-dark) 0%, var(--app-primary-light) 100%);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--app-card-bg);
+    border-radius: var(--app-card-radius);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    padding: 2.5rem;
+}
+
+.auth-logo {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--app-primary);
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.auth-subtitle {
+    text-align: center;
+    color: rgba(0,0,0,0.5);
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+    .task-card {
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .auth-card {
+        margin: 1rem;
+        padding: 1.75rem;
+    }
+}

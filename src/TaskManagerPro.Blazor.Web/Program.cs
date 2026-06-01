@@ -1,11 +1,17 @@
 using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
 using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask;
 using TaskManagerPro.Blazor.Infrastructure.Extensions;
+using TaskManagerPro.Blazor.Infrastructure.Identity;
+using TaskManagerPro.Blazor.Infrastructure.Persistence.Context;
+using TaskManagerPro.Blazor.Infrastructure.Persistence.Seeding;
 using TaskManagerPro.Blazor.Web.Components;
+using TaskManagerPro.Blazor.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +32,7 @@ builder.Services.AddMediatR(cfg =>
 // FluentValidation — scans the Application assembly for all AbstractValidator implementations
 builder.Services.AddValidatorsFromAssembly(typeof(CreateTaskCommand).Assembly);
 
-// JWT Authentication
+// JWT middleware authentication (for API endpoints if added later)
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -49,6 +55,18 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Blazor component-level authorization — required for [Authorize] on Razor components
+builder.Services.AddAuthorizationCore();
+
+// CustomAuthStateProvider registered once as a concrete type so AuthService can
+// inject it directly; the second registration forwards the base-class contract
+// to the same scoped instance rather than creating a second object.
+builder.Services.AddScoped<CustomAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(
+    sp => sp.GetRequiredService<CustomAuthStateProvider>());
+
+builder.Services.AddScoped<AuthService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -68,5 +86,15 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Seed demo data on every startup — idempotent, skips if data already exists
+using (IServiceScope scope = app.Services.CreateScope())
+{
+    ApplicationDbContext context =
+        scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    UserManager<ApplicationUser> userManager =
+        scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    await DataSeeder.SeedAsync(context, userManager);
+}
 
 app.Run();

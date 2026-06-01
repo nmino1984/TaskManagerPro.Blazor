@@ -1,0 +1,20 @@
+@page "/tasks/{Id:guid}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Task Detail — TaskManager Pro</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   Href="/tasks"
+                   Color="Color.Default" />
+    <MudText Typo="Typo.h4">Task Detail</MudText>
+</MudStack>
+
+<MudPaper Elevation="2" Class="pa-4">
+    <MudText Color="Color.Secondary">Loading task @Id …</MudText>
+</MudPaper>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+}

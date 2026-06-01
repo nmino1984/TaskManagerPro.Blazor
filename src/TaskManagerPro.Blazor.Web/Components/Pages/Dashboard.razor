@@ -1,0 +1,37 @@
+@page "/"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard — TaskManager Pro</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Dashboard</MudText>
+<MudText Typo="Typo.subtitle1" Class="mb-6" Color="Color.Secondary">
+    Welcome back. Here is an overview of your tasks.
+</MudText>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.overline" Color="Color.Secondary">Total Tasks</MudText>
+            <MudText Typo="Typo.h4">—</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.overline" Color="Color.Secondary">In Progress</MudText>
+            <MudText Typo="Typo.h4">—</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.overline" Color="Color.Secondary">Completed</MudText>
+            <MudText Typo="Typo.h4">—</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.overline" Color="Color.Secondary">Overdue</MudText>
+            <MudText Typo="Typo.h4">—</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>

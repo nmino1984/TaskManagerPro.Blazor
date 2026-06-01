@@ -1,0 +1,158 @@
+@* Login page. Uses EmptyLayout so AppBar and Drawer are not rendered. *@
+@page "/login"
+@layout EmptyLayout
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using TaskManagerPro.Blazor.Web.Services
+
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Sign In — TaskManager Pro</PageTitle>
+
+<div class="auth-container">
+    <MudCard Elevation="6" Class="auth-card">
+
+        <MudCardContent>
+            <div class="auth-logo">TaskManager Pro</div>
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="auth-subtitle">
+                Sign in to your account
+            </MudText>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true" ShowCloseIcon="true"
+                          CloseIconClicked="() => _errorMessage = string.Empty">
+                    @_errorMessage
+                </MudAlert>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="LoginAsync">
+                <DataAnnotationsValidator />
+
+                <MudTextField T="string"
+                              Label="Email"
+                              @bind-Value="_model.Email"
+                              For="() => _model.Email"
+                              InputType="InputType.Email"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Email"
+                              AdornmentColor="Color.Primary"
+                              Variant="Variant.Outlined"
+                              Class="mb-3"
+                              Disabled="_isLoading"
+                              autocomplete="email" />
+
+                <MudTextField T="string"
+                              Label="Password"
+                              @bind-Value="_model.Password"
+                              For="() => _model.Password"
+                              InputType="_showPassword ? InputType.Text : InputType.Password"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                              OnAdornmentClick="() => _showPassword = !_showPassword"
+                              AdornmentAriaLabel="Toggle password visibility"
+                              Variant="Variant.Outlined"
+                              Class="mb-5"
+                              Disabled="_isLoading"
+                              autocomplete="current-password" />
+
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Disabled="_isLoading">
+                    @if (_isLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Signing in…</span>
+                    }
+                    else
+                    {
+                        <span>Sign In</span>
+                    }
+                </MudButton>
+            </EditForm>
+        </MudCardContent>
+
+        <MudCardActions Class="justify-center pb-4">
+            <MudText Typo="Typo.body2">
+                Don't have an account?
+                <MudLink Href="/register" Color="Color.Primary">Register</MudLink>
+            </MudText>
+        </MudCardActions>
+
+    </MudCard>
+</div>
+
+@code {
+    /// <summary>
+    /// Bound model for the login form. DataAnnotations drive both
+    /// client-side validation and MudTextField error display.
+    /// </summary>
+    private sealed class LoginModel
+    {
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required.")]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private readonly LoginModel _model = new();
+    private bool _isLoading;
+    private bool _showPassword;
+    private string _errorMessage = string.Empty;
+
+    /// <summary>
+    /// Sends credentials via AuthService. On success, redirects to the
+    /// returnUrl query parameter (or Dashboard if absent).
+    /// On failure, surfaces the error in a dismissible MudAlert.
+    /// </summary>
+    private async Task LoginAsync()
+    {
+        _isLoading = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            await AuthService.LoginAsync(_model.Email, _model.Password);
+
+            string returnUrl = GetReturnUrl();
+            Navigation.NavigateTo(returnUrl, forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads the returnUrl query parameter set by RedirectToLogin.
+    /// Defaults to "/" when absent or when the value is not a local URL.
+    /// </summary>
+    private string GetReturnUrl()
+    {
+        Uri uri = new(Navigation.Uri);
+        string query = uri.Query;
+
+        if (string.IsNullOrEmpty(query)) return "/";
+
+        System.Collections.Specialized.NameValueCollection qs =
+            System.Web.HttpUtility.ParseQueryString(query);
+
+        string? returnUrl = qs["returnUrl"];
+
+        if (string.IsNullOrEmpty(returnUrl) || !returnUrl.StartsWith('/'))
+            return "/";
+
+        return returnUrl;
+    }
+}
