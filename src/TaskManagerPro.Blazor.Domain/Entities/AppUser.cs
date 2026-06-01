@@ -8,33 +8,36 @@ namespace TaskManagerPro.Blazor.Domain.Entities;
 /// </summary>
 public class AppUser : BaseEntity
 {
+    /// <summary>Required by EF Core for materialisation. Not intended for direct use.</summary>
+    private AppUser() { }
+
     /// <summary>
-    /// User's given name, used for display and personalisation.
+    /// Creates a new user. PasswordHash must already be hashed by the caller
+    /// (Infrastructure's IPasswordHasher) — plain text is never stored here.
     /// </summary>
+    public AppUser(string firstName, string lastName, string email, string passwordHash)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        Email = email;
+        PasswordHash = passwordHash;
+    }
+
+    /// <summary>User's given name, used for display and personalisation.</summary>
     public string FirstName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// User's family name, used for display and personalisation.
-    /// </summary>
+    /// <summary>User's family name, used for display and personalisation.</summary>
     public string LastName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Unique email address used for login and notifications.
-    /// </summary>
+    /// <summary>Unique email address used for login and notifications.</summary>
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Hashed representation of the user's password. Never stored in plain text.
-    /// </summary>
+    /// <summary>Hashed representation of the user's password. Never stored in plain text.</summary>
     public string PasswordHash { get; set; } = string.Empty;
 
-    /// <summary>
-    /// All tasks owned by this user.
-    /// </summary>
+    /// <summary>All tasks owned by this user.</summary>
     public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
 
-    /// <summary>
-    /// Notifications addressed to this user across all their tasks.
-    /// </summary>
+    /// <summary>Notifications addressed to this user across all their tasks.</summary>
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

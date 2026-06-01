@@ -11,9 +11,7 @@ public class Notification : BaseEntity
 {
     private NotificationStatus _status = NotificationStatus.Unread;
 
-    /// <summary>
-    /// Required by EF Core for materialisation. Not intended for direct use.
-    /// </summary>
+    /// <summary>Required by EF Core for materialisation. Not intended for direct use.</summary>
     private Notification() { }
 
     /// <summary>
@@ -30,14 +28,10 @@ public class Notification : BaseEntity
         _status = NotificationStatus.Unread;
     }
 
-    /// <summary>
-    /// Brief heading shown in the notification list.
-    /// </summary>
+    /// <summary>Brief heading shown in the notification list.</summary>
     public string Title { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Full body of the notification explaining what happened and why it matters.
-    /// </summary>
+    /// <summary>Full body of the notification explaining what happened and why it matters.</summary>
     public string Message { get; private set; } = string.Empty;
 
     /// <summary>
@@ -46,14 +40,10 @@ public class Notification : BaseEntity
     /// </summary>
     public NotificationStatus Status => _status;
 
-    /// <summary>
-    /// Foreign key to the recipient user.
-    /// </summary>
+    /// <summary>Foreign key to the recipient user.</summary>
     public Guid UserId { get; private set; }
 
-    /// <summary>
-    /// Foreign key to the related task, if applicable.
-    /// </summary>
+    /// <summary>Foreign key to the related task, if applicable.</summary>
     public Guid? TaskItemId { get; private set; }
 
     /// <summary>Navigation property to the recipient user.</summary>
@@ -61,4 +51,13 @@ public class Notification : BaseEntity
 
     /// <summary>Navigation property to the related task.</summary>
     public TaskItem? TaskItem { get; set; }
+
+    /// <summary>
+    /// Transitions the notification to Read state. Idempotent: calling it on an
+    /// already-read notification has no effect.
+    /// </summary>
+    public void MarkAsRead()
+    {
+        _status = NotificationStatus.Read;
+    }
 }

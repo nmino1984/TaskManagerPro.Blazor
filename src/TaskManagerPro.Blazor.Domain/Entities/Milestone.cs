@@ -13,9 +13,7 @@ public class Milestone : BaseEntity
     private MilestoneStatus _status = MilestoneStatus.Pending;
     private DateTime _targetDate;
 
-    /// <summary>
-    /// Required by EF Core for materialisation. Not intended for direct use.
-    /// </summary>
+    /// <summary>Required by EF Core for materialisation. Not intended for direct use.</summary>
     private Milestone() { }
 
     /// <summary>
@@ -31,14 +29,10 @@ public class Milestone : BaseEntity
         _status = MilestoneStatus.Pending;
     }
 
-    /// <summary>
-    /// Short label identifying this checkpoint.
-    /// </summary>
+    /// <summary>Short label identifying this checkpoint.</summary>
     public string Title { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Detailed description of what this milestone represents.
-    /// </summary>
+    /// <summary>Detailed description of what this milestone represents.</summary>
     public string Description { get; private set; } = string.Empty;
 
     /// <summary>
@@ -53,11 +47,21 @@ public class Milestone : BaseEntity
     /// </summary>
     public MilestoneStatus Status => _status;
 
-    /// <summary>
-    /// Foreign key to the parent task.
-    /// </summary>
+    /// <summary>Foreign key to the parent task.</summary>
     public Guid TaskItemId { get; private set; }
 
     /// <summary>Navigation property to the parent task.</summary>
     public TaskItem? TaskItem { get; set; }
+
+    /// <summary>
+    /// Updates all mutable fields. Status is included so the Application layer
+    /// can drive Overdue transitions without exposing the backing field directly.
+    /// </summary>
+    public void Update(string title, string description, DateTime targetDate, MilestoneStatus status)
+    {
+        Title = title;
+        Description = description;
+        _targetDate = targetDate;
+        _status = status;
+    }
 }

@@ -11,9 +11,7 @@ public class SubTask : BaseEntity
 {
     private bool _isCompleted;
 
-    /// <summary>
-    /// Required by EF Core for materialisation. Not intended for direct use.
-    /// </summary>
+    /// <summary>Required by EF Core for materialisation. Not intended for direct use.</summary>
     private SubTask() { }
 
     /// <summary>
@@ -28,14 +26,10 @@ public class SubTask : BaseEntity
         _isCompleted = false;
     }
 
-    /// <summary>
-    /// Short label describing the individual step.
-    /// </summary>
+    /// <summary>Short label describing the individual step.</summary>
     public string Title { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Additional detail about what completing this step requires.
-    /// </summary>
+    /// <summary>Additional detail about what completing this step requires.</summary>
     public string Description { get; private set; } = string.Empty;
 
     /// <summary>
@@ -44,11 +38,19 @@ public class SubTask : BaseEntity
     /// </summary>
     public bool IsCompleted => _isCompleted;
 
-    /// <summary>
-    /// Foreign key to the parent task.
-    /// </summary>
+    /// <summary>Foreign key to the parent task.</summary>
     public Guid TaskItemId { get; private set; }
 
     /// <summary>Navigation property to the parent task.</summary>
     public TaskItem? TaskItem { get; set; }
+
+    /// <summary>
+    /// Updates all mutable fields including completion state.
+    /// </summary>
+    public void Update(string title, string description, bool isCompleted)
+    {
+        Title = title;
+        Description = description;
+        _isCompleted = isCompleted;
+    }
 }
