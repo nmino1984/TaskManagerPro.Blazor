@@ -26,3 +26,11 @@
 ## Git Rules
 - NEVER execute git commands (commit, push, add, reset) under any circumstance
 - Only the user decides when and what to commit
+
+## Documentation Rules
+- Every public class must have XML summary comment explaining its purpose and responsibility
+- Every public method must have XML summary comment
+- Every public interface must document each member
+- Comments must explain WHY, not WHAT — avoid restating the code
+- Use /// <summary> format always
+- After creating or modifying any file, verify it has proper XML documentation

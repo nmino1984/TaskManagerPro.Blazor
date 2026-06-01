@@ -3,16 +3,57 @@ using TaskManagerPro.Blazor.Domain.Enums;
 
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
+/// <summary>
+/// Represents a significant checkpoint within a task's timeline.
+/// Milestones differ from subtasks in that they carry a target date and
+/// can become Overdue, enabling deadline-aware progress reporting.
+/// </summary>
 public class Milestone : BaseEntity
 {
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public DateTime TargetDate { get; set; }
-    public MilestoneStatus Status { get; set; } = MilestoneStatus.Pending;
+    /// <summary>
+    /// Required by EF Core for materialisation. Not intended for direct use.
+    /// </summary>
+    private Milestone() { }
 
-    // Foreign keys
-    public Guid TaskItemId { get; set; }
+    /// <summary>
+    /// Creates a milestone associated with a task.
+    /// Status defaults to Pending because no work has started at creation time.
+    /// </summary>
+    public Milestone(string title, string description, DateTime targetDate, Guid taskItemId)
+    {
+        Title = title;
+        Description = description;
+        TargetDate = targetDate;
+        TaskItemId = taskItemId;
+        Status = MilestoneStatus.Pending;
+    }
 
-    // Navigation properties
+    /// <summary>
+    /// Short label identifying this checkpoint.
+    /// </summary>
+    public string Title { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Detailed description of what this milestone represents.
+    /// </summary>
+    public string Description { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// The date by which this milestone should be reached.
+    /// </summary>
+    public DateTime TargetDate { get; private set; }
+
+    /// <summary>
+    /// Lifecycle state of the milestone. Internal setter allows background jobs
+    /// to mark milestones as Overdue without exposing mutation to API callers.
+    /// </summary>
+    public MilestoneStatus Status { get; internal set; } = MilestoneStatus.Pending;
+
+    /// <summary>
+    /// Foreign key to the parent task.
+    /// </summary>
+    public Guid TaskItemId { get; private set; }
+
+    /// <summary>Navigation property to the parent task.</summary>
     public TaskItem? TaskItem { get; set; }
 }
