@@ -54,7 +54,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             builder.Entity(entityType.ClrType)
                 .Property(nameof(BaseEntity.UpdatedAt))
-                .HasField("_updatedAt")
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
         }
     }
