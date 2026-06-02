@@ -1,18 +1,9 @@
-@* Redirects unauthenticated users to /login after the Blazor Server circuit is
-   established. Using OnAfterRenderAsync instead of OnInitialized avoids the SSR
-   pre-rendering phase where JS interop is unavailable and Navigation.NavigateTo
-   would produce an invalid response interpreted as 404 by the middleware. *@
 @inject NavigationManager Navigation
 
 @code {
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnInitialized()
     {
-        if (firstRender)
-        {
-            string returnUrl = Uri.EscapeDataString(Navigation.Uri);
-            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
-        }
-
-        await Task.CompletedTask;
+        string returnUrl = Uri.EscapeDataString(Navigation.Uri);
+        Navigation.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: true);
     }
 }

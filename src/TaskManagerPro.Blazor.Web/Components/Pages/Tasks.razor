@@ -1,18 +1,334 @@
 @page "/tasks"
-@attribute [Authorize]
 @rendermode InteractiveServer
+@inherits TaskManagerPro.Blazor.Web.Pages.AuthenticatedPageBase
+
+@using MediatR
+@using System.Security.Claims
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.DeleteTask
+@using TaskManagerPro.Blazor.Application.Common.Models
+@using TaskManagerPro.Blazor.Domain.Enums
+@using TaskManagerPro.Blazor.Web.Components.Dialogs
+
+@inject IMediator Mediator
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
 <PageTitle>My Tasks — TaskManager Pro</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-6">
+<!-- Header -->
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
     <MudText Typo="Typo.h4">My Tasks</MudText>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add">
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialogAsync">
         New Task
     </MudButton>
 </MudStack>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudText Color="Color.Secondary">No tasks found. Create your first task to get started.</MudText>
+<!-- Filters -->
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="7" md="8">
+            <MudTextField T="string"
+                          @bind-Value="_searchTitle"
+                          Label="Search by title"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          Clearable="true"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="ApplyFilters" />
+        </MudItem>
+        <MudItem xs="12" sm="5" md="4">
+            <MudSelect T="WorkTaskStatus?"
+                       Value="_filterStatus"
+                       ValueChanged="OnStatusFilterChanged"
+                       Label="Filter by status"
+                       Variant="Variant.Outlined"
+                       Clearable="true">
+                <MudSelectItem T="WorkTaskStatus?" Value="null">All statuses</MudSelectItem>
+                @foreach (WorkTaskStatus s in Enum.GetValues<WorkTaskStatus>())
+                {
+                    <MudSelectItem T="WorkTaskStatus?" Value="s">@FormatStatus(s)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
 </MudPaper>
+
+@if (_errorMessage != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+}
+
+<!-- Task table -->
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+}
+
+@if (_filteredTasks.Any())
+{
+    <MudTable Items="_filteredTasks"
+              Elevation="2"
+              Hover="true"
+              Dense="false"
+              Loading="_isLoading">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<TaskItemDto, object>(x => x.Title)">Title</MudTableSortLabel></MudTh>
+            <MudTh>Priority</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<TaskItemDto, object>(x => x.DueDate ?? DateTime.MaxValue)">Due Date</MudTableSortLabel></MudTh>
+            <MudTh Style="width:120px">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Title">
+                <MudLink Href="@($"/tasks/{context.Id}")"
+                         Typo="Typo.body2"
+                         Style="font-weight:500; cursor:pointer">
+                    @context.Title
+                </MudLink>
+            </MudTd>
+            <MudTd DataLabel="Priority">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@GetPriorityColor(context.Priority)"
+                         Variant="Variant.Filled">
+                    @context.Priority
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@GetStatusColor(context.Status)"
+                         Variant="Variant.Outlined">
+                    @FormatStatus(context.Status)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Due Date">
+                @if (context.DueDate.HasValue)
+                {
+                    bool overdue = context.DueDate.HasValue
+                                   && context.DueDate.Value.Date < DateTime.UtcNow.Date
+                                   && context.Status != WorkTaskStatus.Completed
+                                   && context.Status != WorkTaskStatus.Cancelled;
+                    <MudText Typo="Typo.body2" Color="@(overdue ? Color.Error : Color.Default)">
+                        @context.DueDate.Value.ToString("MMM dd, yyyy")
+                        @if (overdue) { <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="ml-1" /> }
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
+                }
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               aria-label="Edit task"
+                               OnClick="() => OpenEditDialogAsync(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               aria-label="Delete task"
+                               OnClick="() => DeleteTaskAsync(context)" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new[] { 10, 25, 50 }" />
+        </PagerContent>
+    </MudTable>
+}
+else if (!_isLoading)
+{
+    <MudPaper Elevation="2" Class="pa-8 d-flex align-center justify-center">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.AssignmentTurnedIn"
+                     Size="Size.Large" Color="Color.Secondary" />
+            <MudText Color="Color.Secondary">
+                @(_searchTitle.Length > 0 || _filterStatus.HasValue
+                    ? "No tasks match your filters."
+                    : "No tasks found. Create your first task!")
+            </MudText>
+            @if (_searchTitle.Length == 0 && !_filterStatus.HasValue)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenCreateDialogAsync">
+                    New Task
+                </MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>All tasks for the authenticated user, loaded once on init.</summary>
+    private IList<TaskItemDto> _allTasks = new List<TaskItemDto>();
+
+    /// <summary>Subset of _allTasks after applying title and status filters.</summary>
+    private IList<TaskItemDto> _filteredTasks = new List<TaskItemDto>();
+
+    private Guid _userId;
+    private bool _isLoading = true;
+    private string _searchTitle = string.Empty;
+    private WorkTaskStatus? _filterStatus;
+    private string? _errorMessage;
+
+    /// <summary>
+    /// Runs only after the interactive Blazor Server circuit is connected, guaranteeing
+    /// that JS interop is available and localStorage can be read by CustomAuthStateProvider.
+    /// OnInitializedAsync is not used because it runs during SSR pre-render where
+    /// the "sub" JWT claim is always null.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        AuthenticationState authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        string? userIdString = authState.User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _userId = userId;
+        await LoadTasksAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>Fetches all tasks for the current user and applies active filters.</summary>
+    private async Task LoadTasksAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            PagedResult<TaskItemDto> result = await Mediator.Send(
+                new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
+            _allTasks = result.Items;
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message + " | " + ex.InnerException?.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Filters _allTasks by the current title search string and status selection.
+    /// Called on every debounced keystroke and on status dropdown change.
+    /// </summary>
+    private void ApplyFilters()
+    {
+        _filteredTasks = _allTasks
+            .Where(t => string.IsNullOrWhiteSpace(_searchTitle)
+                        || t.Title.Contains(_searchTitle, StringComparison.OrdinalIgnoreCase))
+            .Where(t => _filterStatus is null || t.Status == _filterStatus)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToList();
+    }
+
+    /// <summary>Opens the TaskDialog in Create mode and reloads the list on success.</summary>
+    private async Task OpenCreateDialogAsync()
+    {
+        DialogParameters<TaskDialog> parameters = new();
+        parameters.Add(d => d.UserId, _userId);
+        parameters.Add(d => d.ExistingTask, null);
+
+        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        IDialogReference dialog = await DialogService.ShowAsync<TaskDialog>("New Task", parameters, options);
+        DialogResult? result = await dialog.Result;
+
+        if (result is { Canceled: false })
+            await LoadTasksAsync();
+    }
+
+    /// <summary>Opens the TaskDialog in Edit mode and reloads the list on success.</summary>
+    private async Task OpenEditDialogAsync(TaskItemDto task)
+    {
+        DialogParameters<TaskDialog> parameters = new();
+        parameters.Add(d => d.UserId, _userId);
+        parameters.Add(d => d.ExistingTask, task);
+
+        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        IDialogReference dialog = await DialogService.ShowAsync<TaskDialog>("Edit Task", parameters, options);
+        DialogResult? result = await dialog.Result;
+
+        if (result is { Canceled: false })
+            await LoadTasksAsync();
+    }
+
+    /// <summary>Handles status filter dropdown changes without binding conflict.</summary>
+    private void OnStatusFilterChanged(WorkTaskStatus? value)
+    {
+        _filterStatus = value;
+        ApplyFilters();
+    }
+
+    /// <summary>
+    /// Shows a MudMessageBox confirmation before sending DeleteTaskCommand.
+    /// Reloads the task list and shows a snackbar on success.
+    /// </summary>
+    private async Task DeleteTaskAsync(TaskItemDto task)
+    {
+        DialogParameters<MudMessageBox> parameters = new();
+        parameters.Add(x => x.Message, $"Are you sure you want to delete \"{task.Title}\"? This action cannot be undone.");
+        parameters.Add(x => x.YesText, "Delete");
+        parameters.Add(x => x.CancelText, "Cancel");
+
+        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Task", parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        try
+        {
+            await Mediator.Send(new DeleteTaskCommand(task.Id, _userId));
+            Snackbar.Add("Task deleted.", Severity.Success);
+            await LoadTasksAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>Maps TaskPriority to a MudBlazor color for chips.</summary>
+    private static Color GetPriorityColor(TaskPriority p) => p switch
+    {
+        TaskPriority.Low      => Color.Success,
+        TaskPriority.Medium   => Color.Info,
+        TaskPriority.High     => Color.Warning,
+        TaskPriority.Critical => Color.Error,
+        _                     => Color.Default
+    };
+
+    /// <summary>Maps WorkTaskStatus to a MudBlazor color for chips.</summary>
+    private static Color GetStatusColor(WorkTaskStatus s) => s switch
+    {
+        WorkTaskStatus.Pending    => Color.Default,
+        WorkTaskStatus.InProgress => Color.Info,
+        WorkTaskStatus.Completed  => Color.Success,
+        WorkTaskStatus.Cancelled  => Color.Error,
+        _                         => Color.Default
+    };
+
+    /// <summary>Formats enum value as a readable label (InProgress → "In Progress").</summary>
+    private static string FormatStatus(WorkTaskStatus s) => s switch
+    {
+        WorkTaskStatus.InProgress => "In Progress",
+        _                         => s.ToString()
+    };
+}

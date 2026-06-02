@@ -1,6 +1,14 @@
 @page "/"
-@attribute [Authorize]
 @rendermode InteractiveServer
+@inherits TaskManagerPro.Blazor.Web.Pages.AuthenticatedPageBase
+
+@using MediatR
+@using System.Security.Claims
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
+@using TaskManagerPro.Blazor.Application.Common.Models
+@using TaskManagerPro.Blazor.Domain.Enums
+
+@inject IMediator Mediator
 
 <PageTitle>Dashboard — TaskManager Pro</PageTitle>
 
@@ -9,29 +17,200 @@
     Welcome back. Here is an overview of your tasks.
 </MudText>
 
-<MudGrid Spacing="3">
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-6" />
+}
+
+<!-- Stats cards -->
+<MudGrid Spacing="3" Class="mb-8">
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.overline" Color="Color.Secondary">Total Tasks</MudText>
-            <MudText Typo="Typo.h4">—</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <div>
+                    <MudText Typo="Typo.overline" Color="Color.Secondary">Total Tasks</MudText>
+                    <MudText Typo="Typo.h4">@_totalTasks</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Primary" Size="Size.Large" />
+            </MudStack>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.overline" Color="Color.Secondary">In Progress</MudText>
-            <MudText Typo="Typo.h4">—</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <div>
+                    <MudText Typo="Typo.overline" Color="Color.Secondary">In Progress</MudText>
+                    <MudText Typo="Typo.h4">@_inProgressCount</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Color="Color.Info" Size="Size.Large" />
+            </MudStack>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.overline" Color="Color.Secondary">Completed</MudText>
-            <MudText Typo="Typo.h4">—</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <div>
+                    <MudText Typo="Typo.overline" Color="Color.Secondary">Completed</MudText>
+                    <MudText Typo="Typo.h4">@_completedCount</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
+            </MudStack>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.overline" Color="Color.Secondary">Overdue</MudText>
-            <MudText Typo="Typo.h4">—</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <div>
+                    <MudText Typo="Typo.overline" Color="Color.Secondary">Overdue</MudText>
+                    <MudText Typo="Typo.h4" Color="@(_overdueCount > 0 ? Color.Error : Color.Default)">
+                        @_overdueCount
+                    </MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Size="Size.Large" />
+            </MudStack>
         </MudPaper>
     </MudItem>
 </MudGrid>
+
+<!-- Recent tasks table -->
+<MudText Typo="Typo.h6" Class="mb-3">Recent Tasks</MudText>
+
+@if (_recentTasks.Any())
+{
+    <MudTable Items="_recentTasks" Elevation="2" Hover="true" Dense="false">
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Priority</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Due Date</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Title">
+                <MudText Typo="Typo.body2" Style="font-weight:500">@context.Title</MudText>
+            </MudTd>
+            <MudTd DataLabel="Priority">
+                <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(context.Priority)" Variant="Variant.Filled">
+                    @context.Priority
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)" Variant="Variant.Outlined">
+                    @FormatStatus(context.Status)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Due Date">
+                @if (context.DueDate.HasValue)
+                {
+                    <MudText Typo="Typo.body2"
+                             Color="@(context.DueDate < DateTime.UtcNow && context.Status != WorkTaskStatus.Completed ? Color.Error : Color.Default)">
+                        @context.DueDate.Value.ToString("MMM dd, yyyy")
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else if (!_isLoading)
+{
+    <MudPaper Elevation="2" Class="pa-6 d-flex align-center justify-center">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AssignmentTurnedIn" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Color="Color.Secondary">No tasks found. Create your first task!</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/tasks"
+                       StartIcon="@Icons.Material.Filled.Add" Size="Size.Small">
+                Go to Tasks
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    /// <summary>Stats shown in the four summary cards.</summary>
+    private int _totalTasks;
+    private int _inProgressCount;
+    private int _completedCount;
+    private int _overdueCount;
+
+    /// <summary>The five most-recently created tasks shown in the table.</summary>
+    private IList<TaskItemDto> _recentTasks = new List<TaskItemDto>();
+
+    private bool _isLoading = true;
+
+    /// <summary>
+    /// Runs only after the interactive Blazor Server circuit is connected, guaranteeing
+    /// that JS interop is available and localStorage can be read by CustomAuthStateProvider.
+    /// OnInitializedAsync is not used here because it runs during SSR pre-render where
+    /// the "sub" JWT claim is always null (localStorage is inaccessible server-side before hydration).
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        AuthenticationState authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        string? userIdString = authState.User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            PagedResult<TaskItemDto> result = await Mediator.Send(
+                new GetAllTasksQuery(userId, Page: 1, PageSize: 1000));
+
+            IList<TaskItemDto> tasks = result.Items;
+
+            _totalTasks      = tasks.Count;
+            _inProgressCount = tasks.Count(t => t.Status == WorkTaskStatus.InProgress);
+            _completedCount  = tasks.Count(t => t.Status == WorkTaskStatus.Completed);
+            _overdueCount    = tasks.Count(t =>
+                t.DueDate.HasValue
+                && t.DueDate.Value.Date < DateTime.UtcNow.Date
+                && t.Status != WorkTaskStatus.Completed
+                && t.Status != WorkTaskStatus.Cancelled);
+
+            _recentTasks = tasks
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(5)
+                .ToList();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Maps TaskPriority to a MudBlazor chip color.</summary>
+    private static Color GetPriorityColor(TaskPriority priority) => priority switch
+    {
+        TaskPriority.Low      => Color.Success,
+        TaskPriority.Medium   => Color.Info,
+        TaskPriority.High     => Color.Warning,
+        TaskPriority.Critical => Color.Error,
+        _                     => Color.Default
+    };
+
+    /// <summary>Maps WorkTaskStatus to a MudBlazor chip color.</summary>
+    private static Color GetStatusColor(WorkTaskStatus status) => status switch
+    {
+        WorkTaskStatus.Pending    => Color.Default,
+        WorkTaskStatus.InProgress => Color.Info,
+        WorkTaskStatus.Completed  => Color.Success,
+        WorkTaskStatus.Cancelled  => Color.Error,
+        _                         => Color.Default
+    };
+
+    /// <summary>Converts enum value to a readable label (e.g. InProgress → "In Progress").</summary>
+    private static string FormatStatus(WorkTaskStatus status) => status switch
+    {
+        WorkTaskStatus.InProgress => "In Progress",
+        _                         => status.ToString()
+    };
+}

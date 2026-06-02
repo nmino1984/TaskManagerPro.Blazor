@@ -1,0 +1,166 @@
+@using MediatR
+@using System.ComponentModel.DataAnnotations
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.UpdateTask
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
+@using TaskManagerPro.Blazor.Domain.Enums
+
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(ExistingTask is null ? Icons.Material.Filled.Add : Icons.Material.Filled.Edit)"
+                     Class="mr-2" Style="vertical-align:middle" />
+            @(ExistingTask is null ? "New Task" : "Edit Task")
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            <MudTextField T="string"
+                          Label="Title"
+                          @bind-Value="_model.Title"
+                          For="() => _model.Title"
+                          Variant="Variant.Outlined"
+                          Class="mb-3"
+                          Disabled="_isSaving" />
+
+            <MudTextField T="string"
+                          Label="Description"
+                          @bind-Value="_model.Description"
+                          For="() => _model.Description"
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          Class="mb-3"
+                          Disabled="_isSaving" />
+
+            <MudDatePicker Label="Due Date"
+                           @bind-Date="_model.DueDate"
+                           Variant="Variant.Outlined"
+                           Class="mb-3"
+                           Clearable="true"
+                           Disabled="_isSaving" />
+
+            <MudSelect T="TaskPriority"
+                       Label="Priority"
+                       @bind-Value="_model.Priority"
+                       Variant="Variant.Outlined"
+                       Class="mb-2"
+                       Disabled="_isSaving">
+                @foreach (TaskPriority p in Enum.GetValues<TaskPriority>())
+                {
+                    <MudSelectItem Value="p">@p</MudSelectItem>
+                }
+            </MudSelect>
+        </EditForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveAsync"
+                   Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving…</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>
+    /// When null the dialog operates in Create mode.
+    /// When set the dialog pre-fills fields and issues an UpdateTaskCommand on save.
+    /// </summary>
+    [Parameter] public TaskItemDto? ExistingTask { get; set; }
+
+    /// <summary>The owner of the task — required for CreateTaskCommand.</summary>
+    [Parameter] public Guid UserId { get; set; }
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private sealed class TaskModel
+    {
+        [Required(ErrorMessage = "Title is required.")]
+        [MaxLength(200, ErrorMessage = "Title must not exceed 200 characters.")]
+        public string Title { get; set; } = string.Empty;
+
+        [MaxLength(500, ErrorMessage = "Description must not exceed 500 characters.")]
+        public string Description { get; set; } = string.Empty;
+
+        public DateTime? DueDate { get; set; }
+        public TaskPriority Priority { get; set; } = TaskPriority.Medium;
+    }
+
+    private readonly TaskModel _model = new();
+    private bool _isSaving;
+
+    /// <summary>Pre-fills the form when editing an existing task.</summary>
+    protected override void OnParametersSet()
+    {
+        if (ExistingTask is not null)
+        {
+            _model.Title       = ExistingTask.Title;
+            _model.Description = ExistingTask.Description;
+            _model.DueDate     = ExistingTask.DueDate;
+            _model.Priority    = ExistingTask.Priority;
+        }
+    }
+
+    /// <summary>
+    /// Sends CreateTaskCommand or UpdateTaskCommand depending on mode,
+    /// shows a snackbar and closes the dialog with a true result on success.
+    /// </summary>
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            if (ExistingTask is null)
+            {
+                await Mediator.Send(new CreateTaskCommand(
+                    _model.Title,
+                    _model.Description,
+                    _model.DueDate?.Date,
+                    _model.Priority,
+                    UserId));
+
+                Snackbar.Add("Task created successfully.", Severity.Success);
+            }
+            else
+            {
+                await Mediator.Send(new UpdateTaskCommand(
+                    ExistingTask.Id,
+                    _model.Title,
+                    _model.Description,
+                    _model.DueDate?.Date,
+                    _model.Priority));
+
+                Snackbar.Add("Task updated successfully.", Severity.Success);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
