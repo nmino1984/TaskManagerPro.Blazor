@@ -2,19 +2,469 @@
 @rendermode InteractiveServer
 @inherits TaskManagerPro.Blazor.Web.Pages.AuthenticatedPageBase
 
+@using MediatR
+@using System.Security.Claims
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.DeleteTask
+@using TaskManagerPro.Blazor.Application.Features.SubTasks.Queries.GetSubTasksByTask
+@using TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.UpdateSubTask
+@using TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.DeleteSubTask
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Queries.GetMilestonesByTask
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.DeleteMilestone
+@using TaskManagerPro.Blazor.Application.Common.Models
+@using TaskManagerPro.Blazor.Domain.Enums
+
+@inject IMediator Mediator
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
 <PageTitle>Task Detail — TaskManager Pro</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-6" />
+}
+else if (_task is null)
+{
+    <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Href="/tasks" Variant="Variant.Text" Class="mb-4">
+        ← Back to Tasks
+    </MudButton>
+    <MudAlert Severity="Severity.Warning">Task not found or you do not have permission to view it.</MudAlert>
+}
+else
+{
+    @* ── Header ── *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
                    Href="/tasks"
-                   Color="Color.Default" />
-    <MudText Typo="Typo.h4">Task Detail</MudText>
-</MudStack>
+                   Variant="Variant.Text">← Back to Tasks</MudButton>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       OnClick="OpenEditTaskDialogAsync">Edit Task</MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.Delete"
+                       OnClick="DeleteTaskAsync">Delete Task</MudButton>
+        </MudStack>
+    </MudStack>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudText Color="Color.Secondary">Loading task @Id …</MudText>
-</MudPaper>
+    @* ── Task info card ── *@
+    <MudPaper Elevation="2" Class="pa-6 mb-6">
+        <MudText Typo="Typo.h4" Class="mb-3">@_task.Title</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3" Wrap="Wrap.Wrap">
+            <MudChip T="string" Color="@GetPriorityColor(_task.Priority)" Variant="Variant.Filled" Size="Size.Small">
+                @_task.Priority
+            </MudChip>
+            <MudChip T="string" Color="@GetStatusColor(_task.Status)" Variant="Variant.Outlined" Size="Size.Small">
+                @FormatStatus(_task.Status)
+            </MudChip>
+            @if (_task.DueDate.HasValue)
+            {
+                bool overdue = _task.DueDate.Value.Date < DateTime.UtcNow.Date
+                               && _task.Status != WorkTaskStatus.Completed
+                               && _task.Status != WorkTaskStatus.Cancelled;
+                <MudChip T="string"
+                         Color="@(overdue ? Color.Error : Color.Default)"
+                         Variant="Variant.Text"
+                         Size="Size.Small"
+                         Icon="@Icons.Material.Filled.CalendarToday">
+                    Due: @_task.DueDate.Value.ToString("MMM dd, yyyy")
+                </MudChip>
+            }
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(_task.Description))
+        {
+            <MudText Typo="Typo.body1">@_task.Description</MudText>
+        }
+    </MudPaper>
+
+    @* ── Subtasks ── *@
+    <MudPaper Elevation="2" Class="pa-6 mb-6">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Typo="Typo.h6">Subtasks</MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Small"
+                       OnClick="OpenAddSubTaskDialogAsync">+ Add Subtask</MudButton>
+        </MudStack>
+
+        @if (_subTasks.Any())
+        {
+            int completedCount = _subTasks.Count(s => s.IsCompleted);
+            int totalCount     = _subTasks.Count;
+            double progress    = (double)completedCount / totalCount * 100.0;
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+                @completedCount of @totalCount completed
+            </MudText>
+            <MudProgressLinear Value="@progress"
+                               Color="Color.Success"
+                               Rounded="true"
+                               Size="Size.Medium"
+                               Class="mb-4" />
+
+            @foreach (SubTaskDto subtask in _subTasks)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudCheckBox T="bool"
+                                     Value="subtask.IsCompleted"
+                                     ValueChanged="@((bool val) => ToggleSubTaskAsync(subtask, val))"
+                                     Color="Color.Success" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body1"
+                                     Style="@(subtask.IsCompleted ? "text-decoration:line-through;opacity:0.6" : string.Empty)">
+                                @subtask.Title
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(subtask.Description))
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@subtask.Description</MudText>
+                            }
+                        </MudStack>
+                    </MudStack>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   aria-label="Delete subtask"
+                                   OnClick="() => DeleteSubTaskAsync(subtask)" />
+                </MudStack>
+                <MudDivider Class="mb-2" />
+            }
+        }
+        else
+        {
+            <MudText Color="Color.Secondary">No subtasks yet. Add one to break this task into smaller steps.</MudText>
+        }
+    </MudPaper>
+
+    @* ── Milestones ── *@
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Typo="Typo.h6">Milestones</MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Small"
+                       OnClick="OpenAddMilestoneDialogAsync">+ Add Milestone</MudButton>
+        </MudStack>
+
+        @if (_milestones.Any())
+        {
+            @foreach (MilestoneDto milestone in _milestones.OrderBy(m => m.TargetDate))
+            {
+                <MudCard Elevation="1" Class="mb-3">
+                    <MudCardContent>
+                        <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween">
+                            <MudStack Spacing="1">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight:600">@milestone.Title</MudText>
+                                    <MudChip T="string"
+                                             Color="@GetMilestoneStatusColor(milestone.Status)"
+                                             Variant="Variant.Filled"
+                                             Size="Size.Small">
+                                        @milestone.Status
+                                    </MudChip>
+                                </MudStack>
+                                @if (!string.IsNullOrWhiteSpace(milestone.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@milestone.Description</MudText>
+                                }
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Target: @milestone.TargetDate.ToString("MMM dd, yyyy")
+                                </MudText>
+                            </MudStack>
+                            <MudStack Row="true" Spacing="1">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               aria-label="Edit milestone"
+                                               OnClick="() => OpenEditMilestoneDialogAsync(milestone)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               aria-label="Delete milestone"
+                                               OnClick="() => DeleteMilestoneAsync(milestone)" />
+                            </MudStack>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            }
+        }
+        else
+        {
+            <MudText Color="Color.Secondary">No milestones yet. Add one to track key checkpoints.</MudText>
+        }
+    </MudPaper>
+}
 
 @code {
+    /// <summary>Route parameter — the unique identifier of the task to display.</summary>
     [Parameter] public Guid Id { get; set; }
+
+    private TaskItemDto?        _task       = null;
+    private IList<SubTaskDto>   _subTasks   = new List<SubTaskDto>();
+    private IList<MilestoneDto> _milestones = new List<MilestoneDto>();
+    private bool _isLoading = true;
+    private Guid _userId;
+
+    /// <summary>
+    /// Loads all data after the interactive Blazor Server circuit is active so the "sub"
+    /// JWT claim is readable from localStorage via CustomAuthStateProvider.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        AuthenticationState authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        string? userIdString = authState.User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _userId = userId;
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Fetches the task from GetAllTasksQuery, then loads its subtasks and milestones
+    /// in parallel. Sets _task to null when the Id belongs to a different user.
+    /// </summary>
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            PagedResult<TaskItemDto> result = await Mediator.Send(
+                new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
+
+            _task = result.Items.FirstOrDefault(t => t.Id == Id);
+
+            if (_task is not null)
+            {
+                IEnumerable<SubTaskDto> subTasksResult =
+                    await Mediator.Send(new GetSubTasksByTaskQuery(Id));
+                _subTasks = subTasksResult.ToList();
+
+                IEnumerable<MilestoneDto> milestonesResult =
+                    await Mediator.Send(new GetMilestonesByTaskQuery(Id));
+                _milestones = milestonesResult.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Opens TaskDialog in edit mode and reloads on success.</summary>
+    private async Task OpenEditTaskDialogAsync()
+    {
+        DialogParameters<TaskDialog> parameters = new();
+        parameters.Add(d => d.UserId, _userId);
+        parameters.Add(d => d.ExistingTask, _task);
+
+        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        IDialogReference dialog = await DialogService.ShowAsync<TaskDialog>("Edit Task", parameters, options);
+        DialogResult? result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Confirms then soft-deletes the task and navigates to /tasks.</summary>
+    private async Task DeleteTaskAsync()
+    {
+        DialogParameters<MudMessageBox> parameters = new();
+        parameters.Add(x => x.Message, $"Delete \"{_task!.Title}\"? This action cannot be undone.");
+        parameters.Add(x => x.YesText, "Delete");
+        parameters.Add(x => x.CancelText, "Cancel");
+
+        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Task", parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        try
+        {
+            await Mediator.Send(new DeleteTaskCommand(Id, _userId));
+            Snackbar.Add("Task deleted.", Severity.Success);
+            Navigation.NavigateTo("/tasks");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>Opens SubTaskDialog and reloads on success.</summary>
+    private async Task OpenAddSubTaskDialogAsync()
+    {
+        DialogParameters<SubTaskDialog> parameters = new();
+        parameters.Add(d => d.TaskItemId, Id);
+
+        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        IDialogReference dialog = await DialogService.ShowAsync<SubTaskDialog>("Add Subtask", parameters, options);
+        DialogResult? result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Sends UpdateSubTaskCommand to toggle completion, then reloads.</summary>
+    private async Task ToggleSubTaskAsync(SubTaskDto subtask, bool completed)
+    {
+        try
+        {
+            await Mediator.Send(new UpdateSubTaskCommand(
+                subtask.Id, subtask.Title, subtask.Description, completed));
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>Confirms then deletes a subtask and reloads.</summary>
+    private async Task DeleteSubTaskAsync(SubTaskDto subtask)
+    {
+        DialogParameters<MudMessageBox> parameters = new();
+        parameters.Add(x => x.Message, $"Delete subtask \"{subtask.Title}\"?");
+        parameters.Add(x => x.YesText, "Delete");
+        parameters.Add(x => x.CancelText, "Cancel");
+
+        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Subtask", parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        try
+        {
+            await Mediator.Send(new DeleteSubTaskCommand(subtask.Id));
+            Snackbar.Add("Subtask deleted.", Severity.Success);
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>Opens MilestoneDialog in create mode and reloads on success.</summary>
+    private async Task OpenAddMilestoneDialogAsync()
+    {
+        DialogParameters<MilestoneDialog> parameters = new();
+        parameters.Add(d => d.TaskItemId, Id);
+
+        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        IDialogReference dialog = await DialogService.ShowAsync<MilestoneDialog>("Add Milestone", parameters, options);
+        DialogResult? result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Opens MilestoneDialog in edit mode and reloads on success.</summary>
+    private async Task OpenEditMilestoneDialogAsync(MilestoneDto milestone)
+    {
+        DialogParameters<MilestoneDialog> parameters = new();
+        parameters.Add(d => d.TaskItemId, Id);
+        parameters.Add(d => d.ExistingMilestone, milestone);
+
+        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        IDialogReference dialog = await DialogService.ShowAsync<MilestoneDialog>("Edit Milestone", parameters, options);
+        DialogResult? result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Confirms then deletes a milestone and reloads.</summary>
+    private async Task DeleteMilestoneAsync(MilestoneDto milestone)
+    {
+        DialogParameters<MudMessageBox> parameters = new();
+        parameters.Add(x => x.Message, $"Delete milestone \"{milestone.Title}\"?");
+        parameters.Add(x => x.YesText, "Delete");
+        parameters.Add(x => x.CancelText, "Cancel");
+
+        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Milestone", parameters);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        try
+        {
+            await Mediator.Send(new DeleteMilestoneCommand(milestone.Id));
+            Snackbar.Add("Milestone deleted.", Severity.Success);
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>Maps TaskPriority to a MudBlazor chip color.</summary>
+    private static Color GetPriorityColor(TaskPriority priority) => priority switch
+    {
+        TaskPriority.Low      => Color.Success,
+        TaskPriority.Medium   => Color.Info,
+        TaskPriority.High     => Color.Warning,
+        TaskPriority.Critical => Color.Error,
+        _                     => Color.Default
+    };
+
+    /// <summary>Maps WorkTaskStatus to a MudBlazor chip color.</summary>
+    private static Color GetStatusColor(WorkTaskStatus status) => status switch
+    {
+        WorkTaskStatus.Pending    => Color.Default,
+        WorkTaskStatus.InProgress => Color.Info,
+        WorkTaskStatus.Completed  => Color.Success,
+        WorkTaskStatus.Cancelled  => Color.Error,
+        _                         => Color.Default
+    };
+
+    /// <summary>Maps MilestoneStatus to a MudBlazor chip color.</summary>
+    private static Color GetMilestoneStatusColor(MilestoneStatus status) => status switch
+    {
+        MilestoneStatus.Pending    => Color.Default,
+        MilestoneStatus.InProgress => Color.Info,
+        MilestoneStatus.Completed  => Color.Success,
+        MilestoneStatus.Overdue    => Color.Error,
+        _                          => Color.Default
+    };
+
+    /// <summary>Formats WorkTaskStatus to a human-readable label.</summary>
+    private static string FormatStatus(WorkTaskStatus status) => status switch
+    {
+        WorkTaskStatus.InProgress => "In Progress",
+        _                         => status.ToString()
+    };
 }

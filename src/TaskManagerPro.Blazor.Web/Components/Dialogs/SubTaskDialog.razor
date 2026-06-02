@@ -1,0 +1,104 @@
+@using MediatR
+@using System.ComponentModel.DataAnnotations
+@using TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.CreateSubTask
+
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" Style="vertical-align:middle" />
+            Add Subtask
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            <MudTextField T="string"
+                          Label="Title"
+                          @bind-Value="_model.Title"
+                          For="() => _model.Title"
+                          Variant="Variant.Outlined"
+                          Class="mb-3"
+                          Disabled="_isSaving" />
+
+            <MudTextField T="string"
+                          Label="Description"
+                          @bind-Value="_model.Description"
+                          For="() => _model.Description"
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          Class="mb-2"
+                          Disabled="_isSaving" />
+        </EditForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveAsync"
+                   Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving…</span>
+            }
+            else
+            {
+                <span>Add</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>The task this subtask belongs to.</summary>
+    [Parameter] public Guid TaskItemId { get; set; }
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private sealed class SubTaskModel
+    {
+        [Required(ErrorMessage = "Title is required.")]
+        [MaxLength(200, ErrorMessage = "Title must not exceed 200 characters.")]
+        public string Title { get; set; } = string.Empty;
+
+        [MaxLength(500, ErrorMessage = "Description must not exceed 500 characters.")]
+        public string Description { get; set; } = string.Empty;
+    }
+
+    private readonly SubTaskModel _model = new();
+    private bool _isSaving;
+
+    /// <summary>
+    /// Sends CreateSubTaskCommand and closes the dialog with Ok on success.
+    /// </summary>
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            await Mediator.Send(new CreateSubTaskCommand(
+                _model.Title,
+                _model.Description,
+                TaskItemId));
+
+            Snackbar.Add("Subtask added.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

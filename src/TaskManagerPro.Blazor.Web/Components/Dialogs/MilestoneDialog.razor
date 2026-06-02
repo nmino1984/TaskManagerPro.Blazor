@@ -1,0 +1,171 @@
+@using MediatR
+@using System.ComponentModel.DataAnnotations
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.CreateMilestone
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.UpdateMilestone
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Queries.GetMilestonesByTask
+@using TaskManagerPro.Blazor.Domain.Enums
+
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(ExistingMilestone is null ? Icons.Material.Filled.Add : Icons.Material.Filled.Edit)"
+                     Class="mr-2" Style="vertical-align:middle" />
+            @(ExistingMilestone is null ? "Add Milestone" : "Edit Milestone")
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            <MudTextField T="string"
+                          Label="Title"
+                          @bind-Value="_model.Title"
+                          For="() => _model.Title"
+                          Variant="Variant.Outlined"
+                          Class="mb-3"
+                          Disabled="_isSaving" />
+
+            <MudTextField T="string"
+                          Label="Description"
+                          @bind-Value="_model.Description"
+                          For="() => _model.Description"
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          Class="mb-3"
+                          Disabled="_isSaving" />
+
+            <MudDatePicker Label="Target Date"
+                           @bind-Date="_model.TargetDate"
+                           Variant="Variant.Outlined"
+                           Class="mb-3"
+                           Disabled="_isSaving" />
+
+            @if (ExistingMilestone is not null)
+            {
+                <MudSelect T="MilestoneStatus"
+                           Label="Status"
+                           @bind-Value="_model.Status"
+                           Variant="Variant.Outlined"
+                           Class="mb-2"
+                           Disabled="_isSaving">
+                    @foreach (MilestoneStatus s in Enum.GetValues<MilestoneStatus>())
+                    {
+                        <MudSelectItem Value="s">@s</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </EditForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveAsync"
+                   Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving…</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>The task this milestone belongs to.</summary>
+    [Parameter] public Guid TaskItemId { get; set; }
+
+    /// <summary>
+    /// When null the dialog operates in Create mode.
+    /// When set the dialog pre-fills fields and issues UpdateMilestoneCommand on save.
+    /// </summary>
+    [Parameter] public MilestoneDto? ExistingMilestone { get; set; }
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private sealed class MilestoneModel
+    {
+        [Required(ErrorMessage = "Title is required.")]
+        [MaxLength(200, ErrorMessage = "Title must not exceed 200 characters.")]
+        public string Title { get; set; } = string.Empty;
+
+        [MaxLength(500, ErrorMessage = "Description must not exceed 500 characters.")]
+        public string Description { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Target date is required.")]
+        public DateTime? TargetDate { get; set; }
+
+        public MilestoneStatus Status { get; set; } = MilestoneStatus.Pending;
+    }
+
+    private readonly MilestoneModel _model = new();
+    private bool _isSaving;
+
+    /// <summary>Pre-fills the form when editing an existing milestone.</summary>
+    protected override void OnParametersSet()
+    {
+        if (ExistingMilestone is not null)
+        {
+            _model.Title       = ExistingMilestone.Title;
+            _model.Description = ExistingMilestone.Description;
+            _model.TargetDate  = ExistingMilestone.TargetDate;
+            _model.Status      = ExistingMilestone.Status;
+        }
+    }
+
+    /// <summary>
+    /// Sends CreateMilestoneCommand or UpdateMilestoneCommand depending on mode,
+    /// shows a snackbar and closes the dialog with Ok on success.
+    /// </summary>
+    private async Task SaveAsync()
+    {
+        if (_model.TargetDate is null) return;
+
+        _isSaving = true;
+        try
+        {
+            if (ExistingMilestone is null)
+            {
+                await Mediator.Send(new CreateMilestoneCommand(
+                    _model.Title,
+                    _model.Description,
+                    _model.TargetDate.Value.Date,
+                    TaskItemId));
+
+                Snackbar.Add("Milestone added.", Severity.Success);
+            }
+            else
+            {
+                await Mediator.Send(new UpdateMilestoneCommand(
+                    ExistingMilestone.Id,
+                    _model.Title,
+                    _model.Description,
+                    _model.TargetDate.Value.Date,
+                    _model.Status));
+
+                Snackbar.Add("Milestone updated.", Severity.Success);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
