@@ -76,4 +76,47 @@ public class TaskItem : BaseEntity
         _dueDate = dueDate;
         Priority = priority;
     }
+
+    /// <summary>
+    /// Transitions the task to InProgress. Throws if the task is already
+    /// Completed or Cancelled, since those are terminal states that require
+    /// an explicit reset before work can resume.
+    /// </summary>
+    public void StartProgress()
+    {
+        if (_status == WorkTaskStatus.Completed || _status == WorkTaskStatus.Cancelled)
+            throw new InvalidOperationException($"Cannot start a task that is {_status}.");
+        _status = WorkTaskStatus.InProgress;
+    }
+
+    /// <summary>
+    /// Marks the task as Completed. Throws if the task has been Cancelled,
+    /// because a cancelled task must be reset to Pending before it can be completed.
+    /// </summary>
+    public void Complete()
+    {
+        if (_status == WorkTaskStatus.Cancelled)
+            throw new InvalidOperationException("Cannot complete a cancelled task.");
+        _status = WorkTaskStatus.Completed;
+    }
+
+    /// <summary>
+    /// Cancels the task. Throws if the task is already Completed,
+    /// because completed work cannot be undone via cancellation.
+    /// </summary>
+    public void Cancel()
+    {
+        if (_status == WorkTaskStatus.Completed)
+            throw new InvalidOperationException("Cannot cancel a completed task.");
+        _status = WorkTaskStatus.Cancelled;
+    }
+
+    /// <summary>
+    /// Resets the task to Pending, allowing it to be restarted from scratch.
+    /// Intended for re-opening tasks that were cancelled or incorrectly marked.
+    /// </summary>
+    public void ResetToPending()
+    {
+        _status = WorkTaskStatus.Pending;
+    }
 }

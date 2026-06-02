@@ -141,9 +141,9 @@ public static class DataSeeder
     }
 
     /// <summary>
-    /// Creates a TaskItem, adds it to the context, saves to obtain its database-assigned Id,
-    /// then sets the desired status via EF Core's change-tracker metadata so the
-    /// backing field is written without exposing a public setter on the domain entity.
+    /// Creates a TaskItem with the desired status using domain transition methods,
+    /// then persists it. Using domain methods ensures business rules are respected
+    /// and the backing field is never written outside the aggregate.
     /// </summary>
     private static async Task<TaskItem> CreateTaskAsync(
         ApplicationDbContext context,
@@ -155,15 +155,16 @@ public static class DataSeeder
         WorkTaskStatus status)
     {
         TaskItem task = new(title, description, dueDate, priority, userId);
+
+        if (status == WorkTaskStatus.InProgress)
+            task.StartProgress();
+        else if (status == WorkTaskStatus.Completed)
+            task.Complete();
+        else if (status == WorkTaskStatus.Cancelled)
+            task.Cancel();
+
         await context.Tasks.AddAsync(task);
         await context.SaveChangesAsync();
-
-        if (status != WorkTaskStatus.Pending)
-        {
-            context.Entry(task).Property(nameof(TaskItem.Status)).CurrentValue = status;
-            await context.SaveChangesAsync();
-        }
-
         return task;
     }
 }
