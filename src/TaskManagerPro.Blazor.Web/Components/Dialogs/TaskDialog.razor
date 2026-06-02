@@ -49,13 +49,28 @@
                        Label="Priority"
                        @bind-Value="_model.Priority"
                        Variant="Variant.Outlined"
-                       Class="mb-2"
+                       Class="mb-3"
                        Disabled="_isSaving">
                 @foreach (TaskPriority p in Enum.GetValues<TaskPriority>())
                 {
                     <MudSelectItem Value="p">@p</MudSelectItem>
                 }
             </MudSelect>
+
+            @if (ExistingTask is not null)
+            {
+                <MudSelect T="WorkTaskStatus"
+                           Label="Status"
+                           @bind-Value="_model.Status"
+                           Variant="Variant.Outlined"
+                           Class="mb-2"
+                           Disabled="_isSaving">
+                    @foreach (WorkTaskStatus s in Enum.GetValues<WorkTaskStatus>())
+                    {
+                        <MudSelectItem Value="s">@FormatStatus(s)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
         </EditForm>
     </DialogContent>
 
@@ -101,6 +116,7 @@
 
         public DateTime? DueDate { get; set; }
         public TaskPriority Priority { get; set; } = TaskPriority.Medium;
+        public WorkTaskStatus Status { get; set; } = WorkTaskStatus.Pending;
     }
 
     private readonly TaskModel _model = new();
@@ -115,6 +131,7 @@
             _model.Description = ExistingTask.Description;
             _model.DueDate     = ExistingTask.DueDate;
             _model.Priority    = ExistingTask.Priority;
+            _model.Status      = ExistingTask.Status;
         }
     }
 
@@ -145,7 +162,8 @@
                     _model.Title,
                     _model.Description,
                     _model.DueDate?.Date,
-                    _model.Priority));
+                    _model.Priority,
+                    _model.Status));
 
                 Snackbar.Add("Task updated successfully.", Severity.Success);
             }
@@ -161,6 +179,13 @@
             _isSaving = false;
         }
     }
+
+    /// <summary>Formats WorkTaskStatus to a human-readable label.</summary>
+    private static string FormatStatus(WorkTaskStatus s) => s switch
+    {
+        WorkTaskStatus.InProgress => "In Progress",
+        _                         => s.ToString()
+    };
 
     private void Cancel() => MudDialog.Cancel();
 }
