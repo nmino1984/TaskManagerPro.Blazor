@@ -1,14 +1,10 @@
 @inherits LayoutComponentBase
 @implements IDisposable
-@using MediatR
 @using System.Security.Claims
-@using TaskManagerPro.Blazor.Application.Features.Notifications.Queries.GetNotifications
-@using TaskManagerPro.Blazor.Domain.Enums
 @using TaskManagerPro.Blazor.Web.Services
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject AuthService AuthSvc
-@inject IMediator Mediator
 @inject NotificationCountService NotificationCount
 
 <MudThemeProvider />
@@ -84,13 +80,6 @@
             _initials = string.Concat(
                 firstName.Length > 0 ? firstName[0..1] : string.Empty,
                 lastName.Length > 0  ? lastName[0..1]  : string.Empty);
-
-            var userIdString = user.FindFirst("sub")?.Value;
-            if (!string.IsNullOrEmpty(userIdString) && Guid.TryParse(userIdString, out var userId))
-            {
-                var notifications = await Mediator.Send(new GetNotificationsQuery(userId));
-                NotificationCount.SetCount(notifications.Count(n => n.Status == NotificationStatus.Unread));
-            }
 
             StateHasChanged();
         }
