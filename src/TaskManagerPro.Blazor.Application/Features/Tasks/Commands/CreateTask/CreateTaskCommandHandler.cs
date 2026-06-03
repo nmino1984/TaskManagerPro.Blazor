@@ -16,10 +16,12 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
     public async Task<Guid> Handle(CreateTaskCommand request, CancellationToken cancellationToken)
     {
         var task = new TaskItem(request.Title, request.Description, request.DueDate, request.Priority, request.UserId);
-
         await _unitOfWork.Tasks.AddAsync(task, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var notification = new Notification("Task created", $"Task '{request.Title}' has been created.", request.UserId, task.Id);
+        await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return task.Id;
     }
 }

@@ -60,6 +60,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(
     sp => sp.GetRequiredService<CustomAuthStateProvider>());
 
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<NotificationCountService>();
 
 var app = builder.Build();
 

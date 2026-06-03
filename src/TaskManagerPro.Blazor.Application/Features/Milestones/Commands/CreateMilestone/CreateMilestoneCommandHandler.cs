@@ -17,14 +17,19 @@ public class CreateMilestoneCommandHandler : IRequestHandler<CreateMilestoneComm
 
     public async Task<Guid> Handle(CreateMilestoneCommand request, CancellationToken cancellationToken)
     {
-        _ = await _unitOfWork.Tasks.GetByIdAsync(request.TaskItemId, cancellationToken)
+        var task = await _unitOfWork.Tasks.GetByIdAsync(request.TaskItemId, cancellationToken)
             ?? throw new NotFoundException(nameof(TaskItem), request.TaskItemId);
 
         var milestone = new Milestone(request.Title, request.Description, request.TargetDate, request.TaskItemId);
-
         await _unitOfWork.Milestones.AddAsync(milestone, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var notification = new Notification(
+            $"Milestone added: '{request.Title}' for task '{task.Title}'",
+            $"A new milestone has been added to task '{task.Title}'.",
+            task.UserId, task.Id);
+        await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return milestone.Id;
     }
 }

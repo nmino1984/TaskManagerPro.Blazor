@@ -2,13 +2,184 @@
 @rendermode InteractiveServer
 @inherits TaskManagerPro.Blazor.Web.Pages.AuthenticatedPageBase
 
+@using MediatR
+@using System.Security.Claims
+@using TaskManagerPro.Blazor.Application.Features.Notifications.Queries.GetNotifications
+@using TaskManagerPro.Blazor.Application.Features.Notifications.Commands.MarkAsRead
+@using TaskManagerPro.Blazor.Domain.Enums
+@using TaskManagerPro.Blazor.Web.Services
+
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+@inject NotificationCountService NotificationCount
+
 <PageTitle>Notifications — TaskManager Pro</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">Notifications</MudText>
-<MudText Typo="Typo.subtitle1" Class="mb-6" Color="Color.Secondary">
-    You are all caught up.
-</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudStack Spacing="0">
+        <MudText Typo="Typo.h4">Notifications</MudText>
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
+            @(_unreadCount > 0 ? $"{_unreadCount} unread" : "You are all caught up.")
+        </MudText>
+    </MudStack>
+    @if (_unreadCount > 0)
+    {
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.DoneAll"
+                   OnClick="MarkAllAsReadAsync">Mark all as read</MudButton>
+    }
+</MudStack>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudText Color="Color.Secondary">No notifications to display.</MudText>
-</MudPaper>
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+}
+
+@if (_notifications.Any())
+{
+    <MudPaper Elevation="2">
+        <MudList T="NotificationDto" Dense="false">
+            @foreach (var n in _notifications)
+            {
+                bool unread = n.Status == NotificationStatus.Unread;
+                <MudListItem T="NotificationDto"
+                             Style="@(unread ? "background-color:rgba(77,182,172,0.07);" : string.Empty)">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pa-1">
+                        <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="3">
+                            <MudIcon Icon="@GetIcon(n)" Color="@GetIconColor(n)" Size="Size.Medium" Class="mt-1" />
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body1"
+                                         Style="@(unread ? "font-weight:600" : "font-weight:400")">
+                                    @n.Title
+                                </MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@n.Message</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@RelativeTime(n.CreatedAt)</MudText>
+                            </MudStack>
+                        </MudStack>
+                        @if (unread)
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="() => MarkAsReadAsync(n)">Mark as read</MudButton>
+                        }
+                    </MudStack>
+                </MudListItem>
+                <MudDivider />
+            }
+        </MudList>
+    </MudPaper>
+}
+else if (!_isLoading)
+{
+    <MudPaper Elevation="2" Class="pa-8 d-flex align-center justify-center">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.NotificationsNone"
+                     Size="Size.Large" Color="Color.Secondary" />
+            <MudText Color="Color.Secondary">No notifications to display.</MudText>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private IList<NotificationDto> _notifications = new List<NotificationDto>();
+    private Guid _userId;
+    private bool _isLoading = true;
+    private int _unreadCount;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var authState    = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdString = authState.User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _userId = userId;
+        await LoadNotificationsAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetNotificationsQuery(_userId));
+            _notifications = result.OrderByDescending(n => n.CreatedAt).ToList();
+            _unreadCount   = _notifications.Count(n => n.Status == NotificationStatus.Unread);
+            NotificationCount.SetCount(_unreadCount);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading notifications: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task MarkAsReadAsync(NotificationDto notification)
+    {
+        try
+        {
+            await Mediator.Send(new MarkAsReadCommand(notification.Id, _userId));
+            await LoadNotificationsAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task MarkAllAsReadAsync()
+    {
+        try
+        {
+            foreach (var n in _notifications.Where(n => n.Status == NotificationStatus.Unread).ToList())
+                await Mediator.Send(new MarkAsReadCommand(n.Id, _userId));
+            Snackbar.Add("All notifications marked as read.", Severity.Success);
+            await LoadNotificationsAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string GetIcon(NotificationDto n)
+    {
+        if (n.Title.Contains("completed", StringComparison.OrdinalIgnoreCase)) return Icons.Material.Filled.CheckCircle;
+        if (n.Title.Contains("cancelled", StringComparison.OrdinalIgnoreCase)) return Icons.Material.Filled.Cancel;
+        if (n.Title.Contains("Milestone", StringComparison.OrdinalIgnoreCase)) return Icons.Material.Filled.Flag;
+        return Icons.Material.Filled.Info;
+    }
+
+    private static Color GetIconColor(NotificationDto n)
+    {
+        if (n.Title.Contains("completed", StringComparison.OrdinalIgnoreCase)) return Color.Success;
+        if (n.Title.Contains("cancelled", StringComparison.OrdinalIgnoreCase)) return Color.Error;
+        if (n.Title.Contains("Milestone", StringComparison.OrdinalIgnoreCase)) return Color.Warning;
+        return Color.Info;
+    }
+
+    private static string RelativeTime(DateTime dt)
+    {
+        TimeSpan diff = DateTime.UtcNow - dt;
+        if (diff.TotalMinutes < 1)  return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} minutes ago";
+        if (diff.TotalHours < 24)   return $"{(int)diff.TotalHours} hours ago";
+        if (diff.TotalDays < 2)     return "yesterday";
+        if (diff.TotalDays < 7)     return $"{(int)diff.TotalDays} days ago";
+        return dt.ToLocalTime().ToString("MMM dd, yyyy");
+    }
+}

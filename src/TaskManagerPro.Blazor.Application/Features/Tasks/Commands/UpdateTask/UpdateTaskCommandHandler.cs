@@ -23,6 +23,7 @@ public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
         var task = await _unitOfWork.Tasks.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(TaskItem), request.Id);
 
+        WorkTaskStatus previousStatus = task.Status;
         task.Update(request.Title, request.Description, request.DueDate, request.Priority);
 
         if (request.Status.HasValue)
@@ -37,6 +38,26 @@ public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
         }
 
         await _unitOfWork.Tasks.UpdateAsync(task, cancellationToken);
+
+        if (task.Status != previousStatus)
+        {
+            Notification? notification = task.Status switch
+            {
+                WorkTaskStatus.Completed => new Notification(
+                    $"Task completed: '{task.Title}'",
+                    $"Your task has been marked as completed.",
+                    task.UserId, task.Id),
+                WorkTaskStatus.Cancelled => new Notification(
+                    $"Task cancelled: '{task.Title}'",
+                    $"Your task has been cancelled.",
+                    task.UserId, task.Id),
+                _ => null
+            };
+
+            if (notification is not null)
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
