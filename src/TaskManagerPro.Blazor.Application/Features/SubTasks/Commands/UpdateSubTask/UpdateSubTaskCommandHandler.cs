@@ -5,9 +5,6 @@ using TaskManagerPro.Blazor.Domain.Interfaces;
 
 namespace TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.UpdateSubTask;
 
-/// <summary>
-/// Applies field updates to a subtask via the domain Update() method.
-/// </summary>
 public class UpdateSubTaskCommandHandler : IRequestHandler<UpdateSubTaskCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -19,14 +16,12 @@ public class UpdateSubTaskCommandHandler : IRequestHandler<UpdateSubTaskCommand>
 
     public async Task Handle(UpdateSubTaskCommand request, CancellationToken cancellationToken)
     {
-        SubTask? subTask = await _unitOfWork.SubTasks.GetByIdAsync(request.Id, cancellationToken);
+        var subtask = await _unitOfWork.SubTasks.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof(SubTask), request.Id);
 
-        if (subTask is null)
-            throw new NotFoundException(nameof(SubTask), request.Id);
+        subtask.Update(request.Title, request.Description, request.IsCompleted);
 
-        subTask.Update(request.Title, request.Description, request.IsCompleted);
-
-        await _unitOfWork.SubTasks.UpdateAsync(subTask, cancellationToken);
+        await _unitOfWork.SubTasks.UpdateAsync(subtask, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

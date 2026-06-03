@@ -2,9 +2,6 @@ using FluentValidation;
 
 namespace TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.CreateSubTask;
 
-/// <summary>
-/// Validates CreateSubTaskCommand before the handler executes.
-/// </summary>
 public class CreateSubTaskCommandValidator : AbstractValidator<CreateSubTaskCommand>
 {
     public CreateSubTaskCommandValidator()

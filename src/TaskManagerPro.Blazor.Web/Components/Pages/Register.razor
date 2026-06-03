@@ -1,4 +1,3 @@
-@* Registration page. Uses EmptyLayout so AppBar and Drawer are not rendered. *@
 @page "/register"
 @layout EmptyLayout
 @rendermode InteractiveServer
@@ -134,10 +133,6 @@
 </div>
 
 @code {
-    /// <summary>
-    /// Bound model for the registration form. The ConfirmPassword comparison
-    /// is enforced by Compare DataAnnotation so no manual check is needed in code.
-    /// </summary>
     private sealed class RegisterModel
     {
         [Required(ErrorMessage = "First name is required.")]
@@ -158,6 +153,7 @@
             ErrorMessage = "Password must contain at least one uppercase letter and one number.")]
         public string Password { get; set; } = string.Empty;
 
+        // [Compare] handles the match check — no manual comparison needed in code
         [Required(ErrorMessage = "Please confirm your password.")]
         [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; set; } = string.Empty;
@@ -170,12 +166,6 @@
     private string _errorMessage = string.Empty;
     private bool _registrationSuccess;
 
-    /// <summary>
-    /// Sends the registration command via AuthService.
-    /// On success shows a confirmation alert instead of auto-logging in,
-    /// giving the user explicit control over when to navigate to Login.
-    /// On failure surfaces the server error in the dismissible MudAlert.
-    /// </summary>
     private async Task RegisterAsync()
     {
         _isLoading = true;
@@ -183,12 +173,7 @@
 
         try
         {
-            await AuthService.RegisterAsync(
-                _model.FirstName,
-                _model.LastName,
-                _model.Email,
-                _model.Password);
-
+            await AuthService.RegisterAsync(_model.FirstName, _model.LastName, _model.Email, _model.Password);
             _registrationSuccess = true;
         }
         catch (Exception ex)

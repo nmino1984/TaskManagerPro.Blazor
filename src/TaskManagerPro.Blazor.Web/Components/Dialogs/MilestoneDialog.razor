@@ -81,13 +81,9 @@
 </MudDialog>
 
 @code {
-    /// <summary>The task this milestone belongs to.</summary>
     [Parameter] public Guid TaskItemId { get; set; }
 
-    /// <summary>
-    /// When null the dialog operates in Create mode.
-    /// When set the dialog pre-fills fields and issues UpdateMilestoneCommand on save.
-    /// </summary>
+    // null = Create mode; non-null = Edit mode
     [Parameter] public MilestoneDto? ExistingMilestone { get; set; }
 
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
@@ -110,7 +106,6 @@
     private readonly MilestoneModel _model = new();
     private bool _isSaving;
 
-    /// <summary>Pre-fills the form when editing an existing milestone.</summary>
     protected override void OnParametersSet()
     {
         if (ExistingMilestone is not null)
@@ -122,10 +117,6 @@
         }
     }
 
-    /// <summary>
-    /// Sends CreateMilestoneCommand or UpdateMilestoneCommand depending on mode,
-    /// shows a snackbar and closes the dialog with Ok on success.
-    /// </summary>
     private async Task SaveAsync()
     {
         if (_model.TargetDate is null) return;
@@ -136,22 +127,14 @@
             if (ExistingMilestone is null)
             {
                 await Mediator.Send(new CreateMilestoneCommand(
-                    _model.Title,
-                    _model.Description,
-                    _model.TargetDate.Value.Date,
-                    TaskItemId));
-
+                    _model.Title, _model.Description, _model.TargetDate.Value.Date, TaskItemId));
                 Snackbar.Add("Milestone added.", Severity.Success);
             }
             else
             {
                 await Mediator.Send(new UpdateMilestoneCommand(
-                    ExistingMilestone.Id,
-                    _model.Title,
-                    _model.Description,
-                    _model.TargetDate.Value.Date,
-                    _model.Status));
-
+                    ExistingMilestone.Id, _model.Title, _model.Description,
+                    _model.TargetDate.Value.Date, _model.Status));
                 Snackbar.Add("Milestone updated.", Severity.Success);
             }
 

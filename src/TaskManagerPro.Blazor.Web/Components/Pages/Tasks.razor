@@ -17,7 +17,6 @@
 
 <PageTitle>My Tasks — TaskManager Pro</PageTitle>
 
-<!-- Header -->
 <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
     <MudText Typo="Typo.h4">My Tasks</MudText>
     <MudButton Variant="Variant.Filled"
@@ -28,7 +27,6 @@
     </MudButton>
 </MudStack>
 
-<!-- Filters -->
 <MudPaper Elevation="1" Class="pa-4 mb-4">
     <MudGrid Spacing="2">
         <MudItem xs="12" sm="7" md="8">
@@ -65,7 +63,6 @@
     <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 }
 
-<!-- Task table -->
 @if (_isLoading)
 {
     <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
@@ -169,30 +166,22 @@ else if (!_isLoading)
 }
 
 @code {
-    /// <summary>All tasks for the authenticated user, loaded once on init.</summary>
-    private IList<TaskItemDto> _allTasks = new List<TaskItemDto>();
-
-    /// <summary>Subset of _allTasks after applying title and status filters.</summary>
+    private IList<TaskItemDto> _allTasks      = new List<TaskItemDto>();
     private IList<TaskItemDto> _filteredTasks = new List<TaskItemDto>();
-
     private Guid _userId;
     private bool _isLoading = true;
     private string _searchTitle = string.Empty;
     private WorkTaskStatus? _filterStatus;
     private string? _errorMessage;
 
-    /// <summary>
-    /// Runs only after the interactive Blazor Server circuit is connected, guaranteeing
-    /// that JS interop is available and localStorage can be read by CustomAuthStateProvider.
-    /// OnInitializedAsync is not used because it runs during SSR pre-render where
-    /// the "sub" JWT claim is always null.
-    /// </summary>
+    // OnInitializedAsync runs during SSR where localStorage is inaccessible and "sub" claim is null;
+    // firstRender is the first safe point after the Blazor Server circuit is fully connected
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        AuthenticationState authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        string? userIdString = authState.User.FindFirst("sub")?.Value;
+        var authState    = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdString = authState.User.FindFirst("sub")?.Value;
 
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
         {
@@ -205,14 +194,12 @@ else if (!_isLoading)
         StateHasChanged();
     }
 
-    /// <summary>Fetches all tasks for the current user and applies active filters.</summary>
     private async Task LoadTasksAsync()
     {
         _isLoading = true;
         try
         {
-            PagedResult<TaskItemDto> result = await Mediator.Send(
-                new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
+            var result = await Mediator.Send(new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
             _allTasks = result.Items;
             ApplyFilters();
         }
@@ -226,10 +213,6 @@ else if (!_isLoading)
         }
     }
 
-    /// <summary>
-    /// Filters _allTasks by the current title search string and status selection.
-    /// Called on every debounced keystroke and on status dropdown change.
-    /// </summary>
     private void ApplyFilters()
     {
         _filteredTasks = _allTasks
@@ -240,56 +223,49 @@ else if (!_isLoading)
             .ToList();
     }
 
-    /// <summary>Opens the TaskDialog in Create mode and reloads the list on success.</summary>
     private async Task OpenCreateDialogAsync()
     {
-        DialogParameters<TaskDialog> parameters = new();
+        var parameters = new DialogParameters<TaskDialog>();
         parameters.Add(d => d.UserId, _userId);
         parameters.Add(d => d.ExistingTask, null);
 
-        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
-        IDialogReference dialog = await DialogService.ShowAsync<TaskDialog>("New Task", parameters, options);
-        DialogResult? result = await dialog.Result;
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<TaskDialog>("New Task", parameters, options);
+        var result  = await dialog.Result;
 
         if (result is { Canceled: false })
             await LoadTasksAsync();
     }
 
-    /// <summary>Opens the TaskDialog in Edit mode and reloads the list on success.</summary>
     private async Task OpenEditDialogAsync(TaskItemDto task)
     {
-        DialogParameters<TaskDialog> parameters = new();
+        var parameters = new DialogParameters<TaskDialog>();
         parameters.Add(d => d.UserId, _userId);
         parameters.Add(d => d.ExistingTask, task);
 
-        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
-        IDialogReference dialog = await DialogService.ShowAsync<TaskDialog>("Edit Task", parameters, options);
-        DialogResult? result = await dialog.Result;
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<TaskDialog>("Edit Task", parameters, options);
+        var result  = await dialog.Result;
 
         if (result is { Canceled: false })
             await LoadTasksAsync();
     }
 
-    /// <summary>Handles status filter dropdown changes without binding conflict.</summary>
     private void OnStatusFilterChanged(WorkTaskStatus? value)
     {
         _filterStatus = value;
         ApplyFilters();
     }
 
-    /// <summary>
-    /// Shows a MudMessageBox confirmation before sending DeleteTaskCommand.
-    /// Reloads the task list and shows a snackbar on success.
-    /// </summary>
     private async Task DeleteTaskAsync(TaskItemDto task)
     {
-        DialogParameters<MudMessageBox> parameters = new();
+        var parameters = new DialogParameters<MudMessageBox>();
         parameters.Add(x => x.Message, $"Are you sure you want to delete \"{task.Title}\"? This action cannot be undone.");
         parameters.Add(x => x.YesText, "Delete");
         parameters.Add(x => x.CancelText, "Cancel");
 
-        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Task", parameters);
-        DialogResult? result = await dialog.Result;
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Task", parameters);
+        var result = await dialog.Result;
 
         if (result is null || result.Canceled) return;
 
@@ -305,7 +281,6 @@ else if (!_isLoading)
         }
     }
 
-    /// <summary>Maps TaskPriority to a MudBlazor color for chips.</summary>
     private static Color GetPriorityColor(TaskPriority p) => p switch
     {
         TaskPriority.Low      => Color.Success,
@@ -315,7 +290,6 @@ else if (!_isLoading)
         _                     => Color.Default
     };
 
-    /// <summary>Maps WorkTaskStatus to a MudBlazor color for chips.</summary>
     private static Color GetStatusColor(WorkTaskStatus s) => s switch
     {
         WorkTaskStatus.Pending    => Color.Default,
@@ -325,7 +299,6 @@ else if (!_isLoading)
         _                         => Color.Default
     };
 
-    /// <summary>Formats enum value as a readable label (InProgress → "In Progress").</summary>
     private static string FormatStatus(WorkTaskStatus s) => s switch
     {
         WorkTaskStatus.InProgress => "In Progress",

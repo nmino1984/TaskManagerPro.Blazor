@@ -1,0 +1,41 @@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Warning"
+                     Class="mr-2"
+                     Style="vertical-align:middle"
+                     Color="Color.Warning" />
+            Pending Milestones
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <MudText Class="mb-4">
+            You have @PendingCount pending milestone(s). Do you want to complete this task anyway?
+        </MudText>
+        <MudCheckBox T="bool"
+                     @bind-Value="_markMilestones"
+                     Label="Mark all pending milestones as Completed"
+                     Color="Color.Primary" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Confirm">Complete Task</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int PendingCount { get; set; }
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private bool _markMilestones;
+
+    // Checkbox state is passed as dialog result data so the caller knows whether to complete milestones
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(_markMilestones));
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -7,8 +7,7 @@ using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptio
 namespace TaskManagerPro.Blazor.Application.Features.Auth.Commands.Register;
 
 /// <summary>
-/// Creates a Domain AppUser record. Password is hashed via IPasswordHasher
-/// before being stored so the handler never touches plain-text credentials.
+/// Password is hashed via IPasswordHasher before storage — plain text never touches this handler.
 /// Duplicate email check prevents silent overwrites of existing accounts.
 /// </summary>
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
@@ -24,8 +23,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
 
     public async Task<Guid> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        IEnumerable<AppUser> existing = await _unitOfWork.Users.FindAsync(
-            u => u.Email == request.Email, cancellationToken);
+        var existing = await _unitOfWork.Users.FindAsync(u => u.Email == request.Email, cancellationToken);
 
         if (existing.Any())
             throw new AppValidationException(new Dictionary<string, string[]>
@@ -33,8 +31,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
                 { "Email", new[] { "This email address is already registered." } }
             });
 
-        string passwordHash = _passwordHasher.Hash(request.Password);
-        AppUser user = new(request.FirstName, request.LastName, request.Email, passwordHash);
+        var user = new AppUser(request.FirstName, request.LastName, request.Email,
+                               _passwordHasher.Hash(request.Password));
 
         await _unitOfWork.Users.AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

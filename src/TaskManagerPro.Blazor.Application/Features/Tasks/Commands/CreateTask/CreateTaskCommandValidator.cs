@@ -2,9 +2,6 @@ using FluentValidation;
 
 namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask;
 
-/// <summary>
-/// Validator for CreateTaskCommand.
-/// </summary>
 public class CreateTaskCommandValidator : AbstractValidator<CreateTaskCommand>
 {
     public CreateTaskCommandValidator()

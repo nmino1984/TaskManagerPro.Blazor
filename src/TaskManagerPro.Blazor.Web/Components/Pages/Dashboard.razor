@@ -22,7 +22,6 @@
     <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-6" />
 }
 
-<!-- Stats cards -->
 <MudGrid Spacing="3" Class="mb-8">
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
@@ -72,7 +71,6 @@
     </MudItem>
 </MudGrid>
 
-<!-- Recent tasks table -->
 <MudText Typo="Typo.h6" Class="mb-3">Recent Tasks</MudText>
 
 @if (_recentTasks.Any())
@@ -129,29 +127,21 @@ else if (!_isLoading)
 }
 
 @code {
-    /// <summary>Stats shown in the four summary cards.</summary>
     private int _totalTasks;
     private int _inProgressCount;
     private int _completedCount;
     private int _overdueCount;
-
-    /// <summary>The five most-recently created tasks shown in the table.</summary>
     private IList<TaskItemDto> _recentTasks = new List<TaskItemDto>();
-
     private bool _isLoading = true;
 
-    /// <summary>
-    /// Runs only after the interactive Blazor Server circuit is connected, guaranteeing
-    /// that JS interop is available and localStorage can be read by CustomAuthStateProvider.
-    /// OnInitializedAsync is not used here because it runs during SSR pre-render where
-    /// the "sub" JWT claim is always null (localStorage is inaccessible server-side before hydration).
-    /// </summary>
+    // OnInitializedAsync runs during SSR where localStorage is inaccessible and "sub" claim is null;
+    // firstRender is the first safe point after the Blazor Server circuit is fully connected
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        AuthenticationState authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        string? userIdString = authState.User.FindFirst("sub")?.Value;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdString = authState.User.FindFirst("sub")?.Value;
 
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
         {
@@ -161,10 +151,8 @@ else if (!_isLoading)
 
         try
         {
-            PagedResult<TaskItemDto> result = await Mediator.Send(
-                new GetAllTasksQuery(userId, Page: 1, PageSize: 1000));
-
-            IList<TaskItemDto> tasks = result.Items;
+            var result = await Mediator.Send(new GetAllTasksQuery(userId, Page: 1, PageSize: 1000));
+            var tasks  = result.Items;
 
             _totalTasks      = tasks.Count;
             _inProgressCount = tasks.Count(t => t.Status == WorkTaskStatus.InProgress);
@@ -175,10 +163,7 @@ else if (!_isLoading)
                 && t.Status != WorkTaskStatus.Completed
                 && t.Status != WorkTaskStatus.Cancelled);
 
-            _recentTasks = tasks
-                .OrderByDescending(t => t.CreatedAt)
-                .Take(5)
-                .ToList();
+            _recentTasks = tasks.OrderByDescending(t => t.CreatedAt).Take(5).ToList();
         }
         finally
         {
@@ -187,7 +172,6 @@ else if (!_isLoading)
         }
     }
 
-    /// <summary>Maps TaskPriority to a MudBlazor chip color.</summary>
     private static Color GetPriorityColor(TaskPriority priority) => priority switch
     {
         TaskPriority.Low      => Color.Success,
@@ -197,7 +181,6 @@ else if (!_isLoading)
         _                     => Color.Default
     };
 
-    /// <summary>Maps WorkTaskStatus to a MudBlazor chip color.</summary>
     private static Color GetStatusColor(WorkTaskStatus status) => status switch
     {
         WorkTaskStatus.Pending    => Color.Default,
@@ -207,7 +190,6 @@ else if (!_isLoading)
         _                         => Color.Default
     };
 
-    /// <summary>Converts enum value to a readable label (e.g. InProgress → "In Progress").</summary>
     private static string FormatStatus(WorkTaskStatus status) => status switch
     {
         WorkTaskStatus.InProgress => "In Progress",

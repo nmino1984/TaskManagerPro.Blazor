@@ -5,10 +5,7 @@ using TaskManagerPro.Blazor.Domain.Interfaces;
 
 namespace TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.CreateSubTask;
 
-/// <summary>
-/// Creates a subtask after verifying the parent task exists.
-/// The existence check prevents orphaned subtasks with invalid TaskItemIds.
-/// </summary>
+// Verifies the parent task exists to prevent orphaned subtasks with an invalid TaskItemId
 public class CreateSubTaskCommandHandler : IRequestHandler<CreateSubTaskCommand, Guid>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -20,16 +17,14 @@ public class CreateSubTaskCommandHandler : IRequestHandler<CreateSubTaskCommand,
 
     public async Task<Guid> Handle(CreateSubTaskCommand request, CancellationToken cancellationToken)
     {
-        TaskItem? parent = await _unitOfWork.Tasks.GetByIdAsync(request.TaskItemId, cancellationToken);
+        _ = await _unitOfWork.Tasks.GetByIdAsync(request.TaskItemId, cancellationToken)
+            ?? throw new NotFoundException(nameof(TaskItem), request.TaskItemId);
 
-        if (parent is null)
-            throw new NotFoundException(nameof(TaskItem), request.TaskItemId);
+        var subtask = new SubTask(request.Title, request.Description, request.TaskItemId);
 
-        SubTask subTask = new(request.Title, request.Description, request.TaskItemId);
-
-        await _unitOfWork.SubTasks.AddAsync(subTask, cancellationToken);
+        await _unitOfWork.SubTasks.AddAsync(subtask, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return subTask.Id;
+        return subtask.Id;
     }
 }

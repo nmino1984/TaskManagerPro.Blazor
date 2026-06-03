@@ -5,41 +5,31 @@ namespace TaskManagerPro.Blazor.Domain.Interfaces;
 
 /// <summary>
 /// Generic repository contract for basic persistence operations.
-/// Keeping this interface in the Domain layer ensures Application handlers
-/// are not coupled to any specific ORM or data access technology.
+/// Lives in the Domain layer so Application handlers stay decoupled
+/// from any specific ORM or data-access technology.
 /// </summary>
 public interface IRepository<T> where T : BaseEntity
 {
-    /// <summary>
-    /// Retrieves a single entity by its surrogate key, or null if not found.
-    /// </summary>
+    /// <summary>Returns the entity with the given id, or null if not found.</summary>
     Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns all non-deleted entities of this type. Use with caution on large tables;
-    /// prefer <see cref="FindAsync"/> with a filter for production queries.
+    /// Returns all non-deleted entities. Avoid on large tables —
+    /// prefer <see cref="FindAsync"/> with a filter instead.
     /// </summary>
     Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns entities matching the given predicate. Allows the caller to push
-    /// filter criteria to the database rather than loading all rows into memory.
-    /// </summary>
+    /// <summary>Returns entities matching the predicate, filtered at the database level.</summary>
     Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Stages a new entity for insertion on the next <see cref="IUnitOfWork.SaveChangesAsync"/> call.
-    /// </summary>
+    /// <summary>Stages the entity for insertion on the next SaveChanges call.</summary>
     Task AddAsync(T entity, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Marks an existing entity as modified so its changes are persisted on the next save.
-    /// </summary>
     Task UpdateAsync(T entity, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes the entity from the store. Implementations may perform a soft delete
-    /// by setting <see cref="BaseEntity.IsDeleted"/> instead of a physical delete.
+    /// Removes the entity. Implementations typically perform a soft delete
+    /// by setting <see cref="BaseEntity.IsDeleted"/> rather than a physical delete.
     /// </summary>
     Task DeleteAsync(T entity, CancellationToken cancellationToken = default);
 }

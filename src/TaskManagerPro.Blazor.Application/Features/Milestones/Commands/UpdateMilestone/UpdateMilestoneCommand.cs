@@ -4,9 +4,8 @@ using TaskManagerPro.Blazor.Domain.Enums;
 namespace TaskManagerPro.Blazor.Application.Features.Milestones.Commands.UpdateMilestone;
 
 /// <summary>
-/// Command to update a milestone's fields and status.
-/// Status is included here because milestone lifecycle (e.g. Overdue) is managed
-/// by both user actions and background jobs via the same domain method.
+/// Status is included so both user actions and background jobs (e.g. Overdue transitions)
+/// can drive the lifecycle through the same domain method.
 /// </summary>
 public record UpdateMilestoneCommand(
     Guid Id,

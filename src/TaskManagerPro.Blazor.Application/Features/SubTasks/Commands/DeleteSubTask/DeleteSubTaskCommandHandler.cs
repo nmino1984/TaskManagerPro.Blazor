@@ -5,9 +5,6 @@ using TaskManagerPro.Blazor.Domain.Interfaces;
 
 namespace TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.DeleteSubTask;
 
-/// <summary>
-/// Soft-deletes a subtask. The parent task record is unaffected.
-/// </summary>
 public class DeleteSubTaskCommandHandler : IRequestHandler<DeleteSubTaskCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -19,12 +16,10 @@ public class DeleteSubTaskCommandHandler : IRequestHandler<DeleteSubTaskCommand>
 
     public async Task Handle(DeleteSubTaskCommand request, CancellationToken cancellationToken)
     {
-        SubTask? subTask = await _unitOfWork.SubTasks.GetByIdAsync(request.Id, cancellationToken);
+        var subtask = await _unitOfWork.SubTasks.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof(SubTask), request.Id);
 
-        if (subTask is null)
-            throw new NotFoundException(nameof(SubTask), request.Id);
-
-        await _unitOfWork.SubTasks.DeleteAsync(subTask, cancellationToken);
+        await _unitOfWork.SubTasks.DeleteAsync(subtask, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

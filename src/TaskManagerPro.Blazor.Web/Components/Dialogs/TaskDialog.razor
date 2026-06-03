@@ -94,13 +94,8 @@
 </MudDialog>
 
 @code {
-    /// <summary>
-    /// When null the dialog operates in Create mode.
-    /// When set the dialog pre-fills fields and issues an UpdateTaskCommand on save.
-    /// </summary>
+    // null = Create mode; non-null = Edit mode (pre-fills form, sends UpdateTaskCommand)
     [Parameter] public TaskItemDto? ExistingTask { get; set; }
-
-    /// <summary>The owner of the task — required for CreateTaskCommand.</summary>
     [Parameter] public Guid UserId { get; set; }
 
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
@@ -122,7 +117,6 @@
     private readonly TaskModel _model = new();
     private bool _isSaving;
 
-    /// <summary>Pre-fills the form when editing an existing task.</summary>
     protected override void OnParametersSet()
     {
         if (ExistingTask is not null)
@@ -135,10 +129,6 @@
         }
     }
 
-    /// <summary>
-    /// Sends CreateTaskCommand or UpdateTaskCommand depending on mode,
-    /// shows a snackbar and closes the dialog with a true result on success.
-    /// </summary>
     private async Task SaveAsync()
     {
         _isSaving = true;
@@ -147,24 +137,14 @@
             if (ExistingTask is null)
             {
                 await Mediator.Send(new CreateTaskCommand(
-                    _model.Title,
-                    _model.Description,
-                    _model.DueDate?.Date,
-                    _model.Priority,
-                    UserId));
-
+                    _model.Title, _model.Description, _model.DueDate?.Date, _model.Priority, UserId));
                 Snackbar.Add("Task created successfully.", Severity.Success);
             }
             else
             {
                 await Mediator.Send(new UpdateTaskCommand(
-                    ExistingTask.Id,
-                    _model.Title,
-                    _model.Description,
-                    _model.DueDate?.Date,
-                    _model.Priority,
-                    _model.Status));
-
+                    ExistingTask.Id, _model.Title, _model.Description,
+                    _model.DueDate?.Date, _model.Priority, _model.Status));
                 Snackbar.Add("Task updated successfully.", Severity.Success);
             }
 
@@ -180,7 +160,6 @@
         }
     }
 
-    /// <summary>Formats WorkTaskStatus to a human-readable label.</summary>
     private static string FormatStatus(WorkTaskStatus s) => s switch
     {
         WorkTaskStatus.InProgress => "In Progress",

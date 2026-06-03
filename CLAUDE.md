@@ -20,17 +20,21 @@
 
 ## Code Quality
 - Zero warnings policy — treat all warnings as errors
-- Always add XML documentation comments to public interfaces and classes
+- Document public interfaces completely. Skip obvious methods — if the name explains it, no comment needed. Comments explain WHY not WHAT.
 - Never use var for primitive types
 
 ## Git Rules
 - NEVER execute git commands (commit, push, add, reset) under any circumstance
 - Only the user decides when and what to commit
 
-## Documentation Rules
-- Every public class must have XML summary comment explaining its purpose and responsibility
-- Every public method must have XML summary comment
-- Every public interface must document each member
-- Comments must explain WHY, not WHAT — avoid restating the code
-- Use /// <summary> format always
-- After creating or modifying any file, verify it has proper XML documentation
+## Code Style — Natural Human Style
+- Do NOT add XML documentation to every method and property. Only document public interfaces, complex business logic, and non-obvious decisions. Simple CRUD methods need no comments.
+- Use concise variable names where context is clear: "tasks" not "taskItemDtoCollection", "user" not "authenticatedUserEntity", "id" not "taskItemIdentifier"
+- Avoid over-engineering simple things. A straightforward if/else is often better than a clever pattern
+- Leave occasional TODO comments where something could genuinely be improved
+- Skip method comments when the method name is already self-explanatory. LoginAsync() needs no summary saying "handles login"
+- It is okay to have minor style variations between files
+- Avoid redundant inline comments that just restate the code in English
+- Use "var" freely when the type is obvious from context
+- Not every edge case needs explicit handling — trust the framework where appropriate
+- Prefer flat code over deeply nested abstractions when the logic is simple enough

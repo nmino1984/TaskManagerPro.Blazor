@@ -6,11 +6,13 @@
 @using System.Security.Claims
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.DeleteTask
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.UpdateTask
 @using TaskManagerPro.Blazor.Application.Features.SubTasks.Queries.GetSubTasksByTask
 @using TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.UpdateSubTask
 @using TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.DeleteSubTask
 @using TaskManagerPro.Blazor.Application.Features.Milestones.Queries.GetMilestonesByTask
 @using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.DeleteMilestone
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.UpdateMilestone
 @using TaskManagerPro.Blazor.Application.Common.Models
 @using TaskManagerPro.Blazor.Domain.Enums
 
@@ -39,16 +41,38 @@ else
                    Href="/tasks"
                    Variant="Variant.Text">← Back to Tasks</MudButton>
         <MudStack Row="true" Spacing="2">
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Edit"
-                       OnClick="OpenEditTaskDialogAsync">Edit Task</MudButton>
+            @if (_task.Status != WorkTaskStatus.Completed && _task.Status != WorkTaskStatus.Cancelled)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           OnClick="OpenEditTaskDialogAsync">Edit Task</MudButton>
+            }
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.Delete"
                        OnClick="DeleteTaskAsync">Delete Task</MudButton>
         </MudStack>
     </MudStack>
+
+    @* ── Status alerts ── *@
+    @if (_task.Status == WorkTaskStatus.Completed)
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4">
+            ✓ This task has been completed. Create a new task to add more work.
+        </MudAlert>
+    }
+    else if (_task.Status == WorkTaskStatus.Cancelled)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+            <MudAlert Severity="Severity.Warning" Class="mb-0" Style="flex:1">
+                This task was cancelled.
+            </MudAlert>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       OnClick="ReopenTaskAsync">↺ Reopen Task</MudButton>
+        </MudStack>
+    }
 
     @* ── Task info card ── *@
     <MudPaper Elevation="2" Class="pa-6 mb-6">
@@ -84,11 +108,14 @@ else
     <MudPaper Elevation="2" Class="pa-6 mb-6">
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
             <MudText Typo="Typo.h6">Subtasks</MudText>
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Size="Size.Small"
-                       OnClick="OpenAddSubTaskDialogAsync">+ Add Subtask</MudButton>
+            @if (_task.Status != WorkTaskStatus.Completed && _task.Status != WorkTaskStatus.Cancelled)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           OnClick="OpenAddSubTaskDialogAsync">+ Add Subtask</MudButton>
+            }
         </MudStack>
 
         @if (_subTasks.Any())
@@ -125,11 +152,14 @@ else
                             }
                         </MudStack>
                     </MudStack>
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   aria-label="Delete subtask"
-                                   OnClick="() => DeleteSubTaskAsync(subtask)" />
+                    @if (_task.Status != WorkTaskStatus.Completed)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       aria-label="Delete subtask"
+                                       OnClick="() => DeleteSubTaskAsync(subtask)" />
+                    }
                 </MudStack>
                 <MudDivider Class="mb-2" />
             }
@@ -144,11 +174,14 @@ else
     <MudPaper Elevation="2" Class="pa-6">
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
             <MudText Typo="Typo.h6">Milestones</MudText>
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Size="Size.Small"
-                       OnClick="OpenAddMilestoneDialogAsync">+ Add Milestone</MudButton>
+            @if (_task.Status != WorkTaskStatus.Completed && _task.Status != WorkTaskStatus.Cancelled)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           OnClick="OpenAddMilestoneDialogAsync">+ Add Milestone</MudButton>
+            }
         </MudStack>
 
         @if (_milestones.Any())
@@ -176,18 +209,21 @@ else
                                     Target: @milestone.TargetDate.ToString("MMM dd, yyyy")
                                 </MudText>
                             </MudStack>
-                            <MudStack Row="true" Spacing="1">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                               Size="Size.Small"
-                                               Color="Color.Primary"
-                                               aria-label="Edit milestone"
-                                               OnClick="() => OpenEditMilestoneDialogAsync(milestone)" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                               Size="Size.Small"
-                                               Color="Color.Error"
-                                               aria-label="Delete milestone"
-                                               OnClick="() => DeleteMilestoneAsync(milestone)" />
-                            </MudStack>
+                            @if (_task.Status != WorkTaskStatus.Completed)
+                            {
+                                <MudStack Row="true" Spacing="1">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   aria-label="Edit milestone"
+                                                   OnClick="() => OpenEditMilestoneDialogAsync(milestone)" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   aria-label="Delete milestone"
+                                                   OnClick="() => DeleteMilestoneAsync(milestone)" />
+                                </MudStack>
+                            }
                         </MudStack>
                     </MudCardContent>
                 </MudCard>
@@ -201,25 +237,22 @@ else
 }
 
 @code {
-    /// <summary>Route parameter — the unique identifier of the task to display.</summary>
     [Parameter] public Guid Id { get; set; }
 
-    private TaskItemDto?        _task       = null;
+    private TaskItemDto?        _task;
     private IList<SubTaskDto>   _subTasks   = new List<SubTaskDto>();
     private IList<MilestoneDto> _milestones = new List<MilestoneDto>();
     private bool _isLoading = true;
     private Guid _userId;
 
-    /// <summary>
-    /// Loads all data after the interactive Blazor Server circuit is active so the "sub"
-    /// JWT claim is readable from localStorage via CustomAuthStateProvider.
-    /// </summary>
+    // OnInitializedAsync runs during SSR where localStorage is inaccessible and "sub" claim is null;
+    // firstRender is the first safe point after the Blazor Server circuit is fully connected
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        AuthenticationState authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        string? userIdString = authState.User.FindFirst("sub")?.Value;
+        var authState    = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdString = authState.User.FindFirst("sub")?.Value;
 
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
         {
@@ -232,28 +265,21 @@ else
         StateHasChanged();
     }
 
-    /// <summary>
-    /// Fetches the task from GetAllTasksQuery, then loads its subtasks and milestones
-    /// in parallel. Sets _task to null when the Id belongs to a different user.
-    /// </summary>
+    // _task is set to null when the Id is valid but belongs to a different user (access denied via empty query result)
     private async Task LoadDataAsync()
     {
         _isLoading = true;
         try
         {
-            PagedResult<TaskItemDto> result = await Mediator.Send(
-                new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
-
+            var result = await Mediator.Send(new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
             _task = result.Items.FirstOrDefault(t => t.Id == Id);
 
             if (_task is not null)
             {
-                IEnumerable<SubTaskDto> subTasksResult =
-                    await Mediator.Send(new GetSubTasksByTaskQuery(Id));
+                var subTasksResult  = await Mediator.Send(new GetSubTasksByTaskQuery(Id));
                 _subTasks = subTasksResult.ToList();
 
-                IEnumerable<MilestoneDto> milestonesResult =
-                    await Mediator.Send(new GetMilestonesByTaskQuery(Id));
+                var milestonesResult = await Mediator.Send(new GetMilestonesByTaskQuery(Id));
                 _milestones = milestonesResult.ToList();
             }
         }
@@ -268,34 +294,73 @@ else
         }
     }
 
-    /// <summary>Opens TaskDialog in edit mode and reloads on success.</summary>
+    // Captures status before the dialog opens so we can detect a Completed transition on close
+    // and offer to complete any pending milestones via HandlePendingMilestonesAfterCompletionAsync
     private async Task OpenEditTaskDialogAsync()
     {
-        DialogParameters<TaskDialog> parameters = new();
+        WorkTaskStatus statusBeforeEdit = _task?.Status ?? WorkTaskStatus.Pending;
+
+        var parameters = new DialogParameters<TaskDialog>();
         parameters.Add(d => d.UserId, _userId);
         parameters.Add(d => d.ExistingTask, _task);
 
-        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
-        IDialogReference dialog = await DialogService.ShowAsync<TaskDialog>("Edit Task", parameters, options);
-        DialogResult? result = await dialog.Result;
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<TaskDialog>("Edit Task", parameters, options);
+        var result  = await dialog.Result;
 
         if (result is { Canceled: false })
         {
             await LoadDataAsync();
             StateHasChanged();
+
+            if (_task is not null
+                && _task.Status == WorkTaskStatus.Completed
+                && statusBeforeEdit != WorkTaskStatus.Completed
+                && _milestones.Any(m => m.Status != MilestoneStatus.Completed))
+            {
+                await HandlePendingMilestonesAfterCompletionAsync();
+            }
         }
     }
 
-    /// <summary>Confirms then soft-deletes the task and navigates to /tasks.</summary>
+    // Resets task to Pending via domain method, then immediately opens the edit dialog
+    // so the user can set a new due date without a separate click
+    private async Task ReopenTaskAsync()
+    {
+        var parameters = new DialogParameters<MudMessageBox>();
+        parameters.Add(x => x.Message, "Reopen this task? You will need to set a new due date.");
+        parameters.Add(x => x.YesText, "Reopen");
+        parameters.Add(x => x.CancelText, "Cancel");
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Reopen Task", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        try
+        {
+            await Mediator.Send(new UpdateTaskCommand(
+                Id, _task!.Title, _task.Description, _task.DueDate, _task.Priority,
+                WorkTaskStatus.Pending));
+
+            await LoadDataAsync();
+            await OpenEditTaskDialogAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task DeleteTaskAsync()
     {
-        DialogParameters<MudMessageBox> parameters = new();
+        var parameters = new DialogParameters<MudMessageBox>();
         parameters.Add(x => x.Message, $"Delete \"{_task!.Title}\"? This action cannot be undone.");
         parameters.Add(x => x.YesText, "Delete");
         parameters.Add(x => x.CancelText, "Cancel");
 
-        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Task", parameters);
-        DialogResult? result = await dialog.Result;
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Task", parameters);
+        var result = await dialog.Result;
 
         if (result is null || result.Canceled) return;
 
@@ -311,15 +376,14 @@ else
         }
     }
 
-    /// <summary>Opens SubTaskDialog and reloads on success.</summary>
     private async Task OpenAddSubTaskDialogAsync()
     {
-        DialogParameters<SubTaskDialog> parameters = new();
+        var parameters = new DialogParameters<SubTaskDialog>();
         parameters.Add(d => d.TaskItemId, Id);
 
-        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
-        IDialogReference dialog = await DialogService.ShowAsync<SubTaskDialog>("Add Subtask", parameters, options);
-        DialogResult? result = await dialog.Result;
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<SubTaskDialog>("Add Subtask", parameters, options);
+        var result  = await dialog.Result;
 
         if (result is { Canceled: false })
         {
@@ -328,7 +392,7 @@ else
         }
     }
 
-    /// <summary>Sends UpdateSubTaskCommand to toggle completion, then reloads.</summary>
+    // When all subtasks are checked off, prompts the user to also complete the parent task
     private async Task ToggleSubTaskAsync(SubTaskDto subtask, bool completed)
     {
         try
@@ -336,7 +400,15 @@ else
             await Mediator.Send(new UpdateSubTaskCommand(
                 subtask.Id, subtask.Title, subtask.Description, completed));
             await LoadDataAsync();
-            StateHasChanged();
+
+            if (_task is not null
+                && _subTasks.Any()
+                && _subTasks.All(s => s.IsCompleted)
+                && _task.Status != WorkTaskStatus.Completed
+                && _task.Status != WorkTaskStatus.Cancelled)
+            {
+                await PromptCompleteTaskAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -344,16 +416,121 @@ else
         }
     }
 
-    /// <summary>Confirms then deletes a subtask and reloads.</summary>
+    private async Task PromptCompleteTaskAsync()
+    {
+        var parameters = new DialogParameters<MudMessageBox>();
+        parameters.Add(x => x.Message, "All subtasks are done. Would you like to mark this task as Completed?");
+        parameters.Add(x => x.YesText, "Complete Task");
+        parameters.Add(x => x.CancelText, "Not yet");
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("All subtasks completed! 🎉", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        await CompleteTaskWithMilestoneCheckAsync();
+    }
+
+    // If there are pending milestones, shows PendingMilestonesDialog first.
+    // User can optionally complete them, then task is marked Completed regardless.
+    private async Task CompleteTaskWithMilestoneCheckAsync()
+    {
+        var pendingMilestones = _milestones
+            .Where(m => m.Status != MilestoneStatus.Completed)
+            .ToList();
+
+        bool markMilestones = false;
+
+        if (pendingMilestones.Count > 0)
+        {
+            var dlgParams  = new DialogParameters<PendingMilestonesDialog>();
+            dlgParams.Add(d => d.PendingCount, pendingMilestones.Count);
+
+            var dlgOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+            var dlg        = await DialogService.ShowAsync<PendingMilestonesDialog>("Pending Milestones", dlgParams, dlgOptions);
+            var dlgResult  = await dlg.Result;
+
+            if (dlgResult is null || dlgResult.Canceled) return;
+
+            markMilestones = dlgResult.Data is bool b && b;
+        }
+
+        try
+        {
+            if (markMilestones)
+            {
+                foreach (var milestone in pendingMilestones)
+                {
+                    await Mediator.Send(new UpdateMilestoneCommand(
+                        milestone.Id, milestone.Title, milestone.Description,
+                        milestone.TargetDate, MilestoneStatus.Completed));
+                }
+            }
+
+            await Mediator.Send(new UpdateTaskCommand(
+                Id, _task!.Title, _task.Description, _task.DueDate, _task.Priority,
+                WorkTaskStatus.Completed));
+
+            Snackbar.Add(markMilestones
+                ? "Task and all milestones marked as completed!"
+                : "Task marked as completed!", Severity.Success);
+
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // Called after TaskDialog saves Completed status — task is already persisted,
+    // so this only offers to complete any pending milestones (no second UpdateTaskCommand)
+    private async Task HandlePendingMilestonesAfterCompletionAsync()
+    {
+        var pendingMilestones = _milestones
+            .Where(m => m.Status != MilestoneStatus.Completed)
+            .ToList();
+
+        if (pendingMilestones.Count == 0) return;
+
+        var parameters = new DialogParameters<PendingMilestonesDialog>();
+        parameters.Add(d => d.PendingCount, pendingMilestones.Count);
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<PendingMilestonesDialog>("Pending Milestones", parameters, options);
+        var result  = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        bool markMilestones = result.Data is bool b && b;
+        if (!markMilestones) return;
+
+        try
+        {
+            foreach (var milestone in pendingMilestones)
+            {
+                await Mediator.Send(new UpdateMilestoneCommand(
+                    milestone.Id, milestone.Title, milestone.Description,
+                    milestone.TargetDate, MilestoneStatus.Completed));
+            }
+            Snackbar.Add("All milestones marked as completed!", Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task DeleteSubTaskAsync(SubTaskDto subtask)
     {
-        DialogParameters<MudMessageBox> parameters = new();
+        var parameters = new DialogParameters<MudMessageBox>();
         parameters.Add(x => x.Message, $"Delete subtask \"{subtask.Title}\"?");
         parameters.Add(x => x.YesText, "Delete");
         parameters.Add(x => x.CancelText, "Cancel");
 
-        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Subtask", parameters);
-        DialogResult? result = await dialog.Result;
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Subtask", parameters);
+        var result = await dialog.Result;
 
         if (result is null || result.Canceled) return;
 
@@ -370,15 +547,14 @@ else
         }
     }
 
-    /// <summary>Opens MilestoneDialog in create mode and reloads on success.</summary>
     private async Task OpenAddMilestoneDialogAsync()
     {
-        DialogParameters<MilestoneDialog> parameters = new();
+        var parameters = new DialogParameters<MilestoneDialog>();
         parameters.Add(d => d.TaskItemId, Id);
 
-        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
-        IDialogReference dialog = await DialogService.ShowAsync<MilestoneDialog>("Add Milestone", parameters, options);
-        DialogResult? result = await dialog.Result;
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<MilestoneDialog>("Add Milestone", parameters, options);
+        var result  = await dialog.Result;
 
         if (result is { Canceled: false })
         {
@@ -387,16 +563,15 @@ else
         }
     }
 
-    /// <summary>Opens MilestoneDialog in edit mode and reloads on success.</summary>
     private async Task OpenEditMilestoneDialogAsync(MilestoneDto milestone)
     {
-        DialogParameters<MilestoneDialog> parameters = new();
+        var parameters = new DialogParameters<MilestoneDialog>();
         parameters.Add(d => d.TaskItemId, Id);
         parameters.Add(d => d.ExistingMilestone, milestone);
 
-        DialogOptions options = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
-        IDialogReference dialog = await DialogService.ShowAsync<MilestoneDialog>("Edit Milestone", parameters, options);
-        DialogResult? result = await dialog.Result;
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<MilestoneDialog>("Edit Milestone", parameters, options);
+        var result  = await dialog.Result;
 
         if (result is { Canceled: false })
         {
@@ -405,16 +580,15 @@ else
         }
     }
 
-    /// <summary>Confirms then deletes a milestone and reloads.</summary>
     private async Task DeleteMilestoneAsync(MilestoneDto milestone)
     {
-        DialogParameters<MudMessageBox> parameters = new();
+        var parameters = new DialogParameters<MudMessageBox>();
         parameters.Add(x => x.Message, $"Delete milestone \"{milestone.Title}\"?");
         parameters.Add(x => x.YesText, "Delete");
         parameters.Add(x => x.CancelText, "Cancel");
 
-        IDialogReference dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Milestone", parameters);
-        DialogResult? result = await dialog.Result;
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Milestone", parameters);
+        var result = await dialog.Result;
 
         if (result is null || result.Canceled) return;
 
@@ -431,7 +605,6 @@ else
         }
     }
 
-    /// <summary>Maps TaskPriority to a MudBlazor chip color.</summary>
     private static Color GetPriorityColor(TaskPriority priority) => priority switch
     {
         TaskPriority.Low      => Color.Success,
@@ -441,7 +614,6 @@ else
         _                     => Color.Default
     };
 
-    /// <summary>Maps WorkTaskStatus to a MudBlazor chip color.</summary>
     private static Color GetStatusColor(WorkTaskStatus status) => status switch
     {
         WorkTaskStatus.Pending    => Color.Default,
@@ -451,7 +623,6 @@ else
         _                         => Color.Default
     };
 
-    /// <summary>Maps MilestoneStatus to a MudBlazor chip color.</summary>
     private static Color GetMilestoneStatusColor(MilestoneStatus status) => status switch
     {
         MilestoneStatus.Pending    => Color.Default,
@@ -461,7 +632,6 @@ else
         _                          => Color.Default
     };
 
-    /// <summary>Formats WorkTaskStatus to a human-readable label.</summary>
     private static string FormatStatus(WorkTaskStatus status) => status switch
     {
         WorkTaskStatus.InProgress => "In Progress",

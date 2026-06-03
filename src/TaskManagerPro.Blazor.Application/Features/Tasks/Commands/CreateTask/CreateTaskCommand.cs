@@ -3,9 +3,6 @@ using TaskManagerPro.Blazor.Domain.Enums;
 
 namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask;
 
-/// <summary>
-/// Command to create a new task.
-/// </summary>
 public record CreateTaskCommand(
     string Title,
     string Description,

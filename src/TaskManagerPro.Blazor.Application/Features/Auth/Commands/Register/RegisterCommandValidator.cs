@@ -2,10 +2,8 @@ using FluentValidation;
 
 namespace TaskManagerPro.Blazor.Application.Features.Auth.Commands.Register;
 
-/// <summary>
-/// Validates RegisterCommand. Password rules mirror the Identity options configured
-/// in InfrastructureServiceExtensions to give early feedback before hitting Identity.
-/// </summary>
+// Password rules intentionally mirror InfrastructureServiceExtensions Identity options
+// so validation gives early feedback before the command reaches Infrastructure
 public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
     public RegisterCommandValidator()

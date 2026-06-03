@@ -6,10 +6,7 @@ using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptio
 
 namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.DeleteTask;
 
-/// <summary>
-/// Soft-deletes a task after verifying the requesting user is the owner.
-/// Ownership check prevents one user from deleting another user's tasks.
-/// </summary>
+// Ownership check prevents a user from deleting another user's tasks
 public class DeleteTaskCommandHandler : IRequestHandler<DeleteTaskCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -21,10 +18,8 @@ public class DeleteTaskCommandHandler : IRequestHandler<DeleteTaskCommand>
 
     public async Task Handle(DeleteTaskCommand request, CancellationToken cancellationToken)
     {
-        TaskItem? task = await _unitOfWork.Tasks.GetByIdAsync(request.Id, cancellationToken);
-
-        if (task is null)
-            throw new NotFoundException(nameof(TaskItem), request.Id);
+        var task = await _unitOfWork.Tasks.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof(TaskItem), request.Id);
 
         if (task.UserId != request.UserId)
             throw new AppValidationException(new Dictionary<string, string[]>

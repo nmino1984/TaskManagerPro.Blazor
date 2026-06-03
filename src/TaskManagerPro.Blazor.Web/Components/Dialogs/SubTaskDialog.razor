@@ -56,7 +56,6 @@
 </MudDialog>
 
 @code {
-    /// <summary>The task this subtask belongs to.</summary>
     [Parameter] public Guid TaskItemId { get; set; }
 
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
@@ -74,19 +73,12 @@
     private readonly SubTaskModel _model = new();
     private bool _isSaving;
 
-    /// <summary>
-    /// Sends CreateSubTaskCommand and closes the dialog with Ok on success.
-    /// </summary>
     private async Task SaveAsync()
     {
         _isSaving = true;
         try
         {
-            await Mediator.Send(new CreateSubTaskCommand(
-                _model.Title,
-                _model.Description,
-                TaskItemId));
-
+            await Mediator.Send(new CreateSubTaskCommand(_model.Title, _model.Description, TaskItemId));
             Snackbar.Add("Subtask added.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }

@@ -5,9 +5,6 @@ using TaskManagerPro.Blazor.Domain.Interfaces;
 
 namespace TaskManagerPro.Blazor.Application.Features.Milestones.Commands.UpdateMilestone;
 
-/// <summary>
-/// Applies field updates to a milestone via the domain Update() method.
-/// </summary>
 public class UpdateMilestoneCommandHandler : IRequestHandler<UpdateMilestoneCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -19,10 +16,8 @@ public class UpdateMilestoneCommandHandler : IRequestHandler<UpdateMilestoneComm
 
     public async Task Handle(UpdateMilestoneCommand request, CancellationToken cancellationToken)
     {
-        Milestone? milestone = await _unitOfWork.Milestones.GetByIdAsync(request.Id, cancellationToken);
-
-        if (milestone is null)
-            throw new NotFoundException(nameof(Milestone), request.Id);
+        var milestone = await _unitOfWork.Milestones.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof(Milestone), request.Id);
 
         milestone.Update(request.Title, request.Description, request.TargetDate, request.Status);
 

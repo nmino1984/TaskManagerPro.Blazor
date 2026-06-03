@@ -15,52 +15,46 @@ using TaskManagerPro.Blazor.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Razor / Blazor Server
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// MudBlazor
 builder.Services.AddMudServices();
 
-// Infrastructure (DbContext, Identity, UnitOfWork, PasswordHasher, JwtGenerator, ValidationBehavior)
+// Registers DbContext, Identity, UnitOfWork, PasswordHasher, JwtGenerator, ValidationBehavior
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// MediatR — scans the Application assembly for all IRequestHandler implementations
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(CreateTaskCommand).Assembly));
 
-// FluentValidation — scans the Application assembly for all AbstractValidator implementations
 builder.Services.AddValidatorsFromAssembly(typeof(CreateTaskCommand).Assembly);
 
-// JWT middleware authentication (for API endpoints if added later)
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
     })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
+            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
+            ValidAudience            = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
 
 builder.Services.AddAuthorization();
 
-// Blazor component-level authorization — required for [Authorize] on Razor components
+// Required for [Authorize] on Razor components — distinct from the API-level AddAuthorization above
 builder.Services.AddAuthorizationCore();
 
-// CustomAuthStateProvider registered once as a concrete type so AuthService can
-// inject it directly; the second registration forwards the base-class contract
-// to the same scoped instance rather than creating a second object.
+// Registered as concrete type first so AuthService can inject CustomAuthStateProvider directly;
+// the second line forwards the base-class contract to the same scoped instance (no second object created)
 builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(
     sp => sp.GetRequiredService<CustomAuthStateProvider>());
@@ -69,7 +63,6 @@ builder.Services.AddScoped<AuthService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -78,7 +71,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
@@ -87,13 +79,11 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Seed demo data on every startup — idempotent, skips if data already exists
-using (IServiceScope scope = app.Services.CreateScope())
+// Idempotent — skips if demo data already exists
+using (var scope = app.Services.CreateScope())
 {
-    ApplicationDbContext context =
-        scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    UserManager<ApplicationUser> userManager =
-        scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var context     = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     await DataSeeder.SeedAsync(context, userManager);
 }
 

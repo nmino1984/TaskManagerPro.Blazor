@@ -6,10 +6,7 @@ using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptio
 
 namespace TaskManagerPro.Blazor.Application.Features.Notifications.Commands.MarkAsRead;
 
-/// <summary>
-/// Transitions a notification to Read state after verifying ownership.
-/// Using the domain MarkAsRead() method keeps the status transition inside the aggregate.
-/// </summary>
+// Status transition goes through the domain method to keep it inside the aggregate
 public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -21,10 +18,8 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 
     public async Task Handle(MarkAsReadCommand request, CancellationToken cancellationToken)
     {
-        Notification? notification = await _unitOfWork.Notifications.GetByIdAsync(request.NotificationId, cancellationToken);
-
-        if (notification is null)
-            throw new NotFoundException(nameof(Notification), request.NotificationId);
+        var notification = await _unitOfWork.Notifications.GetByIdAsync(request.NotificationId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Notification), request.NotificationId);
 
         if (notification.UserId != request.UserId)
             throw new AppValidationException(new Dictionary<string, string[]>

@@ -1,9 +1,5 @@
 namespace TaskManagerPro.Blazor.Application.Common.Models;
 
-/// <summary>
-/// Generic model for paginated results.
-/// </summary>
-/// <typeparam name="T">Type of items in the result</typeparam>
 public class PagedResult<T>
 {
     public IList<T> Items { get; set; } = new List<T>();

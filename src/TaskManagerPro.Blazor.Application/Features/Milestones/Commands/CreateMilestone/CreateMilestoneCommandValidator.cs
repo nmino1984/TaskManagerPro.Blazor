@@ -2,10 +2,6 @@ using FluentValidation;
 
 namespace TaskManagerPro.Blazor.Application.Features.Milestones.Commands.CreateMilestone;
 
-/// <summary>
-/// Validates CreateMilestoneCommand before the handler executes.
-/// TargetDate must be in the future so milestones always represent upcoming work.
-/// </summary>
 public class CreateMilestoneCommandValidator : AbstractValidator<CreateMilestoneCommand>
 {
     public CreateMilestoneCommandValidator()
@@ -17,6 +13,7 @@ public class CreateMilestoneCommandValidator : AbstractValidator<CreateMilestone
         RuleFor(x => x.TaskItemId)
             .NotEmpty().WithMessage("TaskItemId is required.");
 
+        // Milestones must represent future work, not past events
         RuleFor(x => x.TargetDate)
             .GreaterThan(DateTime.UtcNow).WithMessage("TargetDate must be in the future.");
     }

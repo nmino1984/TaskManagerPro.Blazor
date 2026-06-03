@@ -1,8 +1,5 @@
 namespace TaskManagerPro.Blazor.Application.Common.Exceptions;
 
-/// <summary>
-/// Exception thrown when validation fails during request processing.
-/// </summary>
 public class ValidationException : Exception
 {
     public IDictionary<string, string[]> Errors { get; }

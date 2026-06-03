@@ -1,4 +1,3 @@
-@* Login page. Uses EmptyLayout so AppBar and Drawer are not rendered. *@
 @page "/login"
 @layout EmptyLayout
 @rendermode InteractiveServer
@@ -88,10 +87,6 @@
 </div>
 
 @code {
-    /// <summary>
-    /// Bound model for the login form. DataAnnotations drive both
-    /// client-side validation and MudTextField error display.
-    /// </summary>
     private sealed class LoginModel
     {
         [Required(ErrorMessage = "Email is required.")]
@@ -107,11 +102,6 @@
     private bool _showPassword;
     private string _errorMessage = string.Empty;
 
-    /// <summary>
-    /// Sends credentials via AuthService. On success, redirects to the
-    /// returnUrl query parameter (or Dashboard if absent).
-    /// On failure, surfaces the error in a dismissible MudAlert.
-    /// </summary>
     private async Task LoginAsync()
     {
         _isLoading = true;
@@ -120,9 +110,7 @@
         try
         {
             await AuthService.LoginAsync(_model.Email, _model.Password);
-
-            string returnUrl = GetReturnUrl();
-            Navigation.NavigateTo(returnUrl, forceLoad: false);
+            Navigation.NavigateTo(GetReturnUrl(), forceLoad: false);
         }
         catch (Exception ex)
         {
@@ -134,25 +122,13 @@
         }
     }
 
-    /// <summary>
-    /// Reads the returnUrl query parameter set by RedirectToLogin.
-    /// Defaults to "/" when absent or when the value is not a local URL.
-    /// </summary>
     private string GetReturnUrl()
     {
-        Uri uri = new(Navigation.Uri);
-        string query = uri.Query;
+        var uri = new Uri(Navigation.Uri);
+        var qs  = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var returnUrl = qs["returnUrl"];
 
-        if (string.IsNullOrEmpty(query)) return "/";
-
-        System.Collections.Specialized.NameValueCollection qs =
-            System.Web.HttpUtility.ParseQueryString(query);
-
-        string? returnUrl = qs["returnUrl"];
-
-        if (string.IsNullOrEmpty(returnUrl) || !returnUrl.StartsWith('/'))
-            return "/";
-
-        return returnUrl;
+        // startsWith('/') check prevents open redirect to external sites
+        return string.IsNullOrEmpty(returnUrl) || !returnUrl.StartsWith('/') ? "/" : returnUrl;
     }
 }

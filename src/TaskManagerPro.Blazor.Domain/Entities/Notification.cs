@@ -4,20 +4,19 @@ using TaskManagerPro.Blazor.Domain.Enums;
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
 /// <summary>
-/// Represents an in-app alert delivered to a user in response to a domain event,
-/// such as a task approaching its deadline or a subtask being completed.
+/// An in-app alert delivered to a user in response to a domain event,
+/// such as a task approaching its deadline.
 /// </summary>
 public class Notification : BaseEntity
 {
     private NotificationStatus _status = NotificationStatus.Unread;
 
-    /// <summary>Required by EF Core for materialisation. Not intended for direct use.</summary>
+    // Required by EF Core — not for direct use
     private Notification() { }
 
     /// <summary>
-    /// Creates a notification addressed to a user. TaskItemId is optional because
-    /// some notifications may be system-level rather than task-specific.
-    /// Status defaults to Unread so the user is alerted on next login.
+    /// TaskItemId is optional because some notifications may be system-level
+    /// rather than tied to a specific task.
     /// </summary>
     public Notification(string title, string message, Guid userId, Guid? taskItemId = null)
     {
@@ -28,34 +27,18 @@ public class Notification : BaseEntity
         _status = NotificationStatus.Unread;
     }
 
-    /// <summary>Brief heading shown in the notification list.</summary>
     public string Title { get; private set; } = string.Empty;
-
-    /// <summary>Full body of the notification explaining what happened and why it matters.</summary>
     public string Message { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Read/unread state. EF Core writes via _status backing field;
-    /// the Application layer is the only intended writer via MarkAsRead commands.
-    /// </summary>
+    // EF Core writes via _status; only the Application layer should call MarkAsRead
     public NotificationStatus Status => _status;
 
-    /// <summary>Foreign key to the recipient user.</summary>
     public Guid UserId { get; private set; }
-
-    /// <summary>Foreign key to the related task, if applicable.</summary>
     public Guid? TaskItemId { get; private set; }
-
-    /// <summary>Navigation property to the recipient user.</summary>
     public AppUser? User { get; set; }
-
-    /// <summary>Navigation property to the related task.</summary>
     public TaskItem? TaskItem { get; set; }
 
-    /// <summary>
-    /// Transitions the notification to Read state. Idempotent: calling it on an
-    /// already-read notification has no effect.
-    /// </summary>
+    // Idempotent — safe to call even if already read
     public void MarkAsRead()
     {
         _status = NotificationStatus.Read;

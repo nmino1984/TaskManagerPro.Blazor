@@ -2,8 +2,5 @@ using MediatR;
 
 namespace TaskManagerPro.Blazor.Application.Features.Notifications.Commands.MarkAsRead;
 
-/// <summary>
-/// Command to mark a notification as read. UserId is required to ensure
-/// a user can only read their own notifications.
-/// </summary>
+// UserId required so a user can only mark their own notifications as read
 public record MarkAsReadCommand(Guid NotificationId, Guid UserId) : IRequest;

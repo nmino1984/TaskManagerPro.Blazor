@@ -2,9 +2,6 @@ using TaskManagerPro.Blazor.Domain.Enums;
 
 namespace TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks;
 
-/// <summary>
-/// Data Transfer Object for TaskItem.
-/// </summary>
 public record TaskItemDto(
     Guid Id,
     string Title,

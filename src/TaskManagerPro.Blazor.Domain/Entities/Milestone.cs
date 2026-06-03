@@ -4,22 +4,17 @@ using TaskManagerPro.Blazor.Domain.Enums;
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
 /// <summary>
-/// Represents a significant checkpoint within a task's timeline.
-/// Milestones differ from subtasks in that they carry a target date and
-/// can become Overdue, enabling deadline-aware progress reporting.
+/// A significant checkpoint within a task's timeline. Unlike subtasks, milestones
+/// carry a target date and can become Overdue, enabling deadline-aware reporting.
 /// </summary>
 public class Milestone : BaseEntity
 {
     private MilestoneStatus _status = MilestoneStatus.Pending;
     private DateTime _targetDate;
 
-    /// <summary>Required by EF Core for materialisation. Not intended for direct use.</summary>
+    // Required by EF Core — not for direct use
     private Milestone() { }
 
-    /// <summary>
-    /// Creates a milestone associated with a task.
-    /// Status defaults to Pending because no work has started at creation time.
-    /// </summary>
     public Milestone(string title, string description, DateTime targetDate, Guid taskItemId)
     {
         Title = title;
@@ -29,34 +24,20 @@ public class Milestone : BaseEntity
         _status = MilestoneStatus.Pending;
     }
 
-    /// <summary>Short label identifying this checkpoint.</summary>
     public string Title { get; private set; } = string.Empty;
-
-    /// <summary>Detailed description of what this milestone represents.</summary>
     public string Description { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// The date by which this milestone should be reached. EF Core writes via
-    /// _targetDate backing field; immutable after construction to enforce planning discipline.
-    /// </summary>
+    // Backing field used by EF Core; immutable after construction to enforce planning discipline
     public DateTime TargetDate => _targetDate;
 
-    /// <summary>
-    /// Lifecycle state of the milestone. EF Core writes via _status backing field;
-    /// background jobs may transition to Overdue when TargetDate is exceeded.
-    /// </summary>
+    // EF Core writes via _status; background jobs may transition this to Overdue
     public MilestoneStatus Status => _status;
 
-    /// <summary>Foreign key to the parent task.</summary>
     public Guid TaskItemId { get; private set; }
-
-    /// <summary>Navigation property to the parent task.</summary>
     public TaskItem? TaskItem { get; set; }
 
-    /// <summary>
-    /// Updates all mutable fields. Status is included so the Application layer
-    /// can drive Overdue transitions without exposing the backing field directly.
-    /// </summary>
+    // Status is mutable here so the Application layer can drive Overdue transitions
+    // without exposing the backing field directly
     public void Update(string title, string description, DateTime targetDate, MilestoneStatus status)
     {
         Title = title;
