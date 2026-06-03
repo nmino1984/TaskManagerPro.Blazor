@@ -2,13 +2,254 @@
 @rendermode InteractiveServer
 @inherits TaskManagerPro.Blazor.Web.Pages.AuthenticatedPageBase
 
+@using MediatR
+@using System.Security.Claims
+@using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Queries.GetMilestonesByTask
+@using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.DeleteMilestone
+@using TaskManagerPro.Blazor.Domain.Enums
+@using TaskManagerPro.Blazor.Web.Components.Dialogs
+
+@inject IMediator Mediator
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
 <PageTitle>Milestones — TaskManager Pro</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">Milestones</MudText>
-<MudText Typo="Typo.subtitle1" Class="mb-6" Color="Color.Secondary">
-    Track key checkpoints across all your tasks.
-</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudStack Spacing="0">
+        <MudText Typo="Typo.h4">Milestones</MudText>
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Track key checkpoints across all your tasks.</MudText>
+    </MudStack>
+</MudStack>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudText Color="Color.Secondary">No milestones yet.</MudText>
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudSelect T="MilestoneStatus?"
+               Value="_filterStatus"
+               ValueChanged="OnStatusFilterChanged"
+               Label="Filter by status"
+               Variant="Variant.Outlined"
+               Clearable="true"
+               Style="max-width:280px">
+        <MudSelectItem T="MilestoneStatus?" Value="null">All statuses</MudSelectItem>
+        @foreach (MilestoneStatus s in Enum.GetValues<MilestoneStatus>())
+        {
+            <MudSelectItem T="MilestoneStatus?" Value="s">@FormatMilestoneStatus(s)</MudSelectItem>
+        }
+    </MudSelect>
 </MudPaper>
+
+@if (_errorMessage != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+}
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+}
+
+@if (_filteredRows.Any())
+{
+    <MudTable Items="_filteredRows"
+              Elevation="2"
+              Hover="true"
+              Dense="false"
+              Loading="_isLoading">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<MilestoneRow, object>(x => x.Milestone.Title)">Title</MudTableSortLabel></MudTh>
+            <MudTh>Task</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MilestoneRow, object>(x => x.Milestone.TargetDate)">Target Date</MudTableSortLabel></MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh Style="width:120px">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Title">@context.Milestone.Title</MudTd>
+            <MudTd DataLabel="Task">
+                <MudLink Href="@($"/tasks/{context.TaskId}")"
+                         Typo="Typo.body2"
+                         Style="font-weight:500; cursor:pointer">
+                    @context.TaskTitle
+                </MudLink>
+            </MudTd>
+            <MudTd DataLabel="Target Date">
+                @{
+                    bool overdue = context.Milestone.TargetDate.Date < DateTime.UtcNow.Date
+                                   && context.Milestone.Status != MilestoneStatus.Completed;
+                }
+                <MudText Typo="Typo.body2" Color="@(overdue ? Color.Error : Color.Default)">
+                    @context.Milestone.TargetDate.ToString("MMM dd, yyyy")
+                    @if (overdue)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="ml-1" />
+                    }
+                </MudText>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@GetMilestoneStatusColor(context.Milestone.Status)"
+                         Variant="Variant.Outlined">
+                    @FormatMilestoneStatus(context.Milestone.Status)
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               aria-label="Edit milestone"
+                               OnClick="() => OpenEditDialogAsync(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               aria-label="Delete milestone"
+                               OnClick="() => DeleteMilestoneAsync(context)" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new[] { 10, 25, 50 }" />
+        </PagerContent>
+    </MudTable>
+}
+else if (!_isLoading)
+{
+    <MudPaper Elevation="2" Class="pa-8 d-flex align-center justify-center">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.Flag"
+                     Size="Size.Large" Color="Color.Secondary" />
+            <MudText Color="Color.Secondary">
+                @(_filterStatus.HasValue
+                    ? "No milestones match your filter."
+                    : "No milestones found. Add milestones to your tasks to track key checkpoints.")
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private record MilestoneRow(MilestoneDto Milestone, string TaskTitle, Guid TaskId);
+
+    private IList<MilestoneRow> _allRows      = new List<MilestoneRow>();
+    private IList<MilestoneRow> _filteredRows = new List<MilestoneRow>();
+    private Guid _userId;
+    private bool _isLoading = true;
+    private MilestoneStatus? _filterStatus;
+    private string? _errorMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var authState    = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdString = authState.User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _userId = userId;
+        await LoadMilestonesAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadMilestonesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var taskResult = await Mediator.Send(new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
+            var rows = new List<MilestoneRow>();
+
+            foreach (var task in taskResult.Items)
+            {
+                var milestones = await Mediator.Send(new GetMilestonesByTaskQuery(task.Id));
+                foreach (var m in milestones)
+                    rows.Add(new MilestoneRow(m, task.Title, task.Id));
+            }
+
+            _allRows = rows;
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        _filteredRows = _allRows
+            .Where(r => _filterStatus is null || r.Milestone.Status == _filterStatus)
+            .OrderBy(r => r.Milestone.TargetDate)
+            .ToList();
+    }
+
+    private void OnStatusFilterChanged(MilestoneStatus? value)
+    {
+        _filterStatus = value;
+        ApplyFilters();
+    }
+
+    private async Task OpenEditDialogAsync(MilestoneRow row)
+    {
+        var parameters = new DialogParameters<MilestoneDialog>();
+        parameters.Add(d => d.TaskItemId, row.TaskId);
+        parameters.Add(d => d.ExistingMilestone, row.Milestone);
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog  = await DialogService.ShowAsync<MilestoneDialog>("Edit Milestone", parameters, options);
+        var result  = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadMilestonesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteMilestoneAsync(MilestoneRow row)
+    {
+        var parameters = new DialogParameters<MudMessageBox>();
+        parameters.Add(x => x.Message, $"Delete milestone \"{row.Milestone.Title}\"? This action cannot be undone.");
+        parameters.Add(x => x.YesText, "Delete");
+        parameters.Add(x => x.CancelText, "Cancel");
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Milestone", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        try
+        {
+            await Mediator.Send(new DeleteMilestoneCommand(row.Milestone.Id));
+            Snackbar.Add("Milestone deleted.", Severity.Success);
+            await LoadMilestonesAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static Color GetMilestoneStatusColor(MilestoneStatus s) => s switch
+    {
+        MilestoneStatus.Pending    => Color.Default,
+        MilestoneStatus.InProgress => Color.Info,
+        MilestoneStatus.Completed  => Color.Success,
+        MilestoneStatus.Overdue    => Color.Error,
+        _                          => Color.Default
+    };
+
+    private static string FormatMilestoneStatus(MilestoneStatus s) => s switch
+    {
+        MilestoneStatus.InProgress => "In Progress",
+        _                          => s.ToString()
+    };
+}

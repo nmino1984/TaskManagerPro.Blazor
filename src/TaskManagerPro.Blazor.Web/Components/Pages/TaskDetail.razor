@@ -140,7 +140,8 @@ else
                         <MudCheckBox T="bool"
                                      Value="subtask.IsCompleted"
                                      ValueChanged="@((bool val) => ToggleSubTaskAsync(subtask, val))"
-                                     Color="Color.Success" />
+                                     Color="Color.Success"
+                                     Disabled="@(_task?.Status == WorkTaskStatus.Completed || _task?.Status == WorkTaskStatus.Cancelled)" />
                         <MudStack Spacing="0">
                             <MudText Typo="Typo.body1"
                                      Style="@(subtask.IsCompleted ? "text-decoration:line-through;opacity:0.6" : string.Empty)">

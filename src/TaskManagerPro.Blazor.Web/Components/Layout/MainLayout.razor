@@ -1,4 +1,8 @@
 @inherits LayoutComponentBase
+@using TaskManagerPro.Blazor.Web.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject AuthService AuthSvc
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -20,6 +24,8 @@
                                Href="/notifications" />
             </MudBadge>
         </MudTooltip>
+        <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">@_initials</MudAvatar>
+        <MudText Typo="Typo.body2" Class="mr-2">@_fullName</MudText>
         <MudTooltip Text="Logout">
             <MudIconButton Icon="@Icons.Material.Filled.Logout"
                            Color="Color.Inherit"
@@ -48,11 +54,26 @@
 @code {
     private bool _drawerOpen = true;
     private int _unreadCount = 0;
+    private string _fullName = string.Empty;
+    private string _initials = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var firstName = user.FindFirst("given_name")?.Value ?? string.Empty;
+            var lastName  = user.FindFirst("family_name")?.Value ?? string.Empty;
+            _fullName = $"{firstName} {lastName}".Trim();
+            _initials = string.Concat(
+                firstName.Length > 0 ? firstName[0..1] : string.Empty,
+                lastName.Length > 0  ? lastName[0..1]  : string.Empty);
+        }
+    }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
-    private void Logout()
-    {
-        // TODO: inject AuthService, call LogoutAsync(), navigate to /login
-    }
+    private async Task Logout() => await AuthSvc.LogoutAsync();
 }

@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Components;
 using TaskManagerPro.Blazor.Application.Features.Auth.Commands.Login;
 using TaskManagerPro.Blazor.Application.Features.Auth.Commands.Register;
 using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptions.ValidationException;
@@ -14,11 +15,13 @@ public class AuthService
 {
     private readonly IMediator _mediator;
     private readonly CustomAuthStateProvider _authStateProvider;
+    private readonly NavigationManager _navigation;
 
-    public AuthService(IMediator mediator, CustomAuthStateProvider authStateProvider)
+    public AuthService(IMediator mediator, CustomAuthStateProvider authStateProvider, NavigationManager navigation)
     {
         _mediator = mediator;
         _authStateProvider = authStateProvider;
+        _navigation = navigation;
     }
 
     public async Task<LoginResult> LoginAsync(string email, string password)
@@ -53,5 +56,8 @@ public class AuthService
     }
 
     public async Task LogoutAsync()
-        => await _authStateProvider.MarkUserAsLoggedOut();
+    {
+        await _authStateProvider.MarkUserAsLoggedOut();
+        _navigation.NavigateTo("/login");
+    }
 }
