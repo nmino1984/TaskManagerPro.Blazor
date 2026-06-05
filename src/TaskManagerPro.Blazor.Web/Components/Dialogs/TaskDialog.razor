@@ -3,6 +3,7 @@
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.UpdateTask
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
+@using TaskManagerPro.Blazor.Application.Features.Users.Queries.GetAllUsers
 @using TaskManagerPro.Blazor.Domain.Enums
 
 @inject IMediator Mediator
@@ -54,6 +55,20 @@
                 @foreach (TaskPriority p in Enum.GetValues<TaskPriority>())
                 {
                     <MudSelectItem Value="p">@p</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="Guid?"
+                       Label="Assign to"
+                       @bind-Value="_model.AssignedToUserId"
+                       Variant="Variant.Outlined"
+                       Class="mb-3"
+                       Clearable="true"
+                       Disabled="_isSaving">
+                <MudSelectItem T="Guid?" Value="null">Unassigned</MudSelectItem>
+                @foreach (var user in _users)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)user.Id)">@user.FullName</MudSelectItem>
                 }
             </MudSelect>
 
@@ -112,20 +127,29 @@
         public DateTime? DueDate { get; set; }
         public TaskPriority Priority { get; set; } = TaskPriority.Medium;
         public WorkTaskStatus Status { get; set; } = WorkTaskStatus.Pending;
+        public Guid? AssignedToUserId { get; set; }
     }
 
     private readonly TaskModel _model = new();
+    private IList<UserDto> _users = new List<UserDto>();
     private bool _isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Mediator.Send(new GetAllUsersQuery());
+        _users = result.ToList();
+    }
 
     protected override void OnParametersSet()
     {
         if (ExistingTask is not null)
         {
-            _model.Title       = ExistingTask.Title;
-            _model.Description = ExistingTask.Description;
-            _model.DueDate     = ExistingTask.DueDate;
-            _model.Priority    = ExistingTask.Priority;
-            _model.Status      = ExistingTask.Status;
+            _model.Title            = ExistingTask.Title;
+            _model.Description      = ExistingTask.Description;
+            _model.DueDate          = ExistingTask.DueDate;
+            _model.Priority         = ExistingTask.Priority;
+            _model.Status           = ExistingTask.Status;
+            _model.AssignedToUserId = ExistingTask.AssignedToUserId;
         }
     }
 
@@ -137,14 +161,16 @@
             if (ExistingTask is null)
             {
                 await Mediator.Send(new CreateTaskCommand(
-                    _model.Title, _model.Description, _model.DueDate?.Date, _model.Priority, UserId));
+                    _model.Title, _model.Description, _model.DueDate?.Date,
+                    _model.Priority, UserId, _model.AssignedToUserId));
                 Snackbar.Add("Task created successfully.", Severity.Success);
             }
             else
             {
                 await Mediator.Send(new UpdateTaskCommand(
                     ExistingTask.Id, _model.Title, _model.Description,
-                    _model.DueDate?.Date, _model.Priority, _model.Status));
+                    _model.DueDate?.Date, _model.Priority, _model.Status,
+                    _model.AssignedToUserId));
                 Snackbar.Add("Task updated successfully.", Severity.Success);
             }
 

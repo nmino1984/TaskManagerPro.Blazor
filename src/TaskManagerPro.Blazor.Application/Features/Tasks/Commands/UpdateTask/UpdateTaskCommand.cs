@@ -12,5 +12,6 @@ public record UpdateTaskCommand(
     string Description,
     DateTime? DueDate,
     TaskPriority Priority,
-    WorkTaskStatus? Status = null
+    WorkTaskStatus? Status = null,
+    Guid? AssignedToUserId = null
 ) : IRequest;

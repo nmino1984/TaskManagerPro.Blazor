@@ -34,10 +34,18 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .HasField("_dueDate")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        builder.Property(t => t.AssignedToUserId).IsRequired(false);
+
         builder.HasOne(t => t.User)
             .WithMany(u => u.Tasks)
             .HasForeignKey(t => t.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<AppUser>()
+            .WithMany()
+            .HasForeignKey(t => t.AssignedToUserId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
 
         builder.HasMany(t => t.SubTasks)
             .WithOne(s => s.TaskItem)

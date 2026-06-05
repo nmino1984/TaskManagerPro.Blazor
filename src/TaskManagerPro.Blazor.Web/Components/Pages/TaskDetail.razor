@@ -13,6 +13,7 @@
 @using TaskManagerPro.Blazor.Application.Features.Milestones.Queries.GetMilestonesByTask
 @using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.DeleteMilestone
 @using TaskManagerPro.Blazor.Application.Features.Milestones.Commands.UpdateMilestone
+@using TaskManagerPro.Blazor.Application.Features.Users.Queries.GetAllUsers
 @using TaskManagerPro.Blazor.Application.Common.Models
 @using TaskManagerPro.Blazor.Domain.Enums
 
@@ -96,6 +97,17 @@ else
                          Icon="@Icons.Material.Filled.CalendarToday">
                     Due: @_task.DueDate.Value.ToString("MMM dd, yyyy")
                 </MudChip>
+            }
+        </MudStack>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Secondary" />
+            @if (_task.AssignedToUserId.HasValue && _userNames.TryGetValue(_task.AssignedToUserId.Value, out var assignedName))
+            {
+                <MudText Typo="Typo.body2">Assigned to: <strong>@assignedName</strong></MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Unassigned</MudText>
             }
         </MudStack>
         @if (!string.IsNullOrWhiteSpace(_task.Description))
@@ -240,9 +252,10 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    private TaskItemDto?        _task;
-    private IList<SubTaskDto>   _subTasks   = new List<SubTaskDto>();
-    private IList<MilestoneDto> _milestones = new List<MilestoneDto>();
+    private TaskItemDto?          _task;
+    private IList<SubTaskDto>     _subTasks   = new List<SubTaskDto>();
+    private IList<MilestoneDto>   _milestones = new List<MilestoneDto>();
+    private Dictionary<Guid, string> _userNames = new();
     private bool _isLoading = true;
     private Guid _userId;
 
@@ -274,6 +287,9 @@ else
         {
             var result = await Mediator.Send(new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
             _task = result.Items.FirstOrDefault(t => t.Id == Id);
+
+            var users = await Mediator.Send(new GetAllUsersQuery());
+            _userNames = users.ToDictionary(u => u.Id, u => u.FullName);
 
             if (_task is not null)
             {

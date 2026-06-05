@@ -23,7 +23,8 @@ public class GetAllTasksQueryHandler : IRequestHandler<GetAllTasksQuery, PagedRe
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(t => new TaskItemDto(t.Id, t.Title, t.Description, t.DueDate, t.Priority,
-                                         t.Status, t.UserId, t.CreatedAt, t.UpdatedAt, t.IsDeleted))
+                                         t.Status, t.UserId, t.CreatedAt, t.UpdatedAt, t.IsDeleted,
+                                         t.AssignedToUserId))
             .ToList();
 
         return new PagedResult<TaskItemDto>

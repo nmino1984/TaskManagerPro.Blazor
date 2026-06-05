@@ -331,6 +331,9 @@ namespace TaskManagerPro.Blazor.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("AssignedToUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -367,6 +370,8 @@ namespace TaskManagerPro.Blazor.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssignedToUserId");
 
                     b.HasIndex("IsDeleted");
 
@@ -547,6 +552,11 @@ namespace TaskManagerPro.Blazor.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("TaskManagerPro.Blazor.Domain.Entities.TaskItem", b =>
                 {
+                    b.HasOne("TaskManagerPro.Blazor.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TaskManagerPro.Blazor.Domain.Entities.AppUser", "User")
                         .WithMany("Tasks")
                         .HasForeignKey("UserId")

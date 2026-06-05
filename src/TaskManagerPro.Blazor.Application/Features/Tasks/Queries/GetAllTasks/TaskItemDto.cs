@@ -12,5 +12,7 @@ public record TaskItemDto(
     Guid UserId,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    bool IsDeleted
+    bool IsDeleted,
+    Guid? AssignedToUserId = null,
+    string? AssignedToName = null
 );

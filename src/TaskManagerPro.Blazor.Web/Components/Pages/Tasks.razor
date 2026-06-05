@@ -6,6 +6,7 @@
 @using System.Security.Claims
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.DeleteTask
+@using TaskManagerPro.Blazor.Application.Features.Users.Queries.GetAllUsers
 @using TaskManagerPro.Blazor.Application.Common.Models
 @using TaskManagerPro.Blazor.Domain.Enums
 @using TaskManagerPro.Blazor.Web.Components.Dialogs
@@ -79,6 +80,7 @@
             <MudTh><MudTableSortLabel SortBy="new Func<TaskItemDto, object>(x => x.Title)">Title</MudTableSortLabel></MudTh>
             <MudTh>Priority</MudTh>
             <MudTh>Status</MudTh>
+            <MudTh>Assigned To</MudTh>
             <MudTh><MudTableSortLabel SortBy="new Func<TaskItemDto, object>(x => x.DueDate ?? DateTime.MaxValue)">Due Date</MudTableSortLabel></MudTh>
             <MudTh Style="width:120px">Actions</MudTh>
         </HeaderContent>
@@ -105,6 +107,16 @@
                          Variant="Variant.Outlined">
                     @FormatStatus(context.Status)
                 </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Assigned To">
+                @if (context.AssignedToUserId.HasValue && _userNames.TryGetValue(context.AssignedToUserId.Value, out var assignedName))
+                {
+                    <MudText Typo="Typo.body2">@assignedName</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Unassigned</MudText>
+                }
             </MudTd>
             <MudTd DataLabel="Due Date">
                 @if (context.DueDate.HasValue)
@@ -168,6 +180,7 @@ else if (!_isLoading)
 @code {
     private IList<TaskItemDto> _allTasks      = new List<TaskItemDto>();
     private IList<TaskItemDto> _filteredTasks = new List<TaskItemDto>();
+    private Dictionary<Guid, string> _userNames = new();
     private Guid _userId;
     private bool _isLoading = true;
     private string _searchTitle = string.Empty;
@@ -201,6 +214,10 @@ else if (!_isLoading)
         {
             var result = await Mediator.Send(new GetAllTasksQuery(_userId, Page: 1, PageSize: 1000));
             _allTasks = result.Items;
+
+            var users = await Mediator.Send(new GetAllUsersQuery());
+            _userNames = users.ToDictionary(u => u.Id, u => u.FullName);
+
             ApplyFilters();
         }
         catch (Exception ex)

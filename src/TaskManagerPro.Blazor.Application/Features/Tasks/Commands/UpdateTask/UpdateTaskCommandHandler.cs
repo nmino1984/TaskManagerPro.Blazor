@@ -24,7 +24,7 @@ public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
             ?? throw new NotFoundException(nameof(TaskItem), request.Id);
 
         WorkTaskStatus previousStatus = task.Status;
-        task.Update(request.Title, request.Description, request.DueDate, request.Priority);
+        task.Update(request.Title, request.Description, request.DueDate, request.Priority, request.AssignedToUserId);
 
         if (request.Status.HasValue)
         {

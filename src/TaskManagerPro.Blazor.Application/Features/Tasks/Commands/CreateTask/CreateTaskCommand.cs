@@ -8,5 +8,6 @@ public record CreateTaskCommand(
     string Description,
     DateTime? DueDate,
     TaskPriority Priority,
-    Guid UserId
+    Guid UserId,
+    Guid? AssignedToUserId = null
 ) : IRequest<Guid>;

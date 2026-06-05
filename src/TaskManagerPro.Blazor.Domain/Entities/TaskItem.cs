@@ -15,13 +15,14 @@ public class TaskItem : BaseEntity
     // Required by EF Core — not for direct use
     private TaskItem() { }
 
-    public TaskItem(string title, string description, DateTime? dueDate, TaskPriority priority, Guid userId)
+    public TaskItem(string title, string description, DateTime? dueDate, TaskPriority priority, Guid userId, Guid? assignedToUserId = null)
     {
         Title = title;
         Description = description;
         _dueDate = dueDate;
         Priority = priority;
         UserId = userId;
+        AssignedToUserId = assignedToUserId;
         _status = WorkTaskStatus.Pending;
     }
 
@@ -37,18 +38,20 @@ public class TaskItem : BaseEntity
     public WorkTaskStatus Status => _status;
 
     public Guid UserId { get; private set; }
+    public Guid? AssignedToUserId { get; private set; }
     public AppUser? User { get; set; }
     public IReadOnlyCollection<SubTask> SubTasks { get; set; } = new List<SubTask>();
     public IReadOnlyCollection<Milestone> Milestones { get; set; } = new List<Milestone>();
     public IReadOnlyCollection<Notification> Notifications { get; set; } = new List<Notification>();
 
     // Centralised so mutation is never scattered across multiple Application handlers
-    public void Update(string title, string description, DateTime? dueDate, TaskPriority priority)
+    public void Update(string title, string description, DateTime? dueDate, TaskPriority priority, Guid? assignedToUserId = null)
     {
         Title = title;
         Description = description;
         _dueDate = dueDate;
         Priority = priority;
+        AssignedToUserId = assignedToUserId;
     }
 
     // Completed and Cancelled are terminal — caller must ResetToPending() before resuming
