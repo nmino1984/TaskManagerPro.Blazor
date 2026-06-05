@@ -1,102 +1,185 @@
 # TaskManagerPro.Blazor
 
-[![Status: Work in Progress](https://img.shields.io/badge/Status-Work%20in%20Progress-yellow)](https://github.com)
+![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
+![Blazor Server](https://img.shields.io/badge/Blazor-Server-7B2FBE?logo=blazor)
+![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
-A modern task management application built with **Blazor Server**, following **Clean Architecture** principles. TaskManagerPro.Blazor provides a robust, scalable solution for managing tasks with a focus on maintainability and testability.
+A professional task management system built with **Blazor Server** and **Clean Architecture**.
 
-## 🎯 Overview
+---
 
-TaskManagerPro.Blazor is a comprehensive task management system designed for teams and individuals to organize, track, and collaborate on tasks efficiently. Built with modern .NET technologies and architectural best practices.
+## Features
 
-## 🛠️ Tech Stack
+- **Task Management** — Create, update, and delete tasks with subtasks and milestones
+- **Task Assignment** — Assign tasks to team members with real-time badge notifications
+- **Notification System** — Unread badge counter that updates automatically on assignment and status changes
+- **JWT Authentication** — Secure login and registration backed by ASP.NET Core Identity
+- **User Profiles** — Update personal information and change password from a dedicated profile page
+- **Priority & Status Tracking** — Four priority levels and full lifecycle transitions (Pending → In Progress → Completed / Cancelled)
+- **Overdue Detection** — Dashboard highlights tasks that have passed their due date
 
-| Component | Technology |
-|-----------|-----------|
-| **Frontend** | Blazor Server |
-| **Backend** | .NET 10 |
-| **Database** | SQL Server |
-| **ORM** | Entity Framework Core |
-| **Architecture** | Clean Architecture |
-| **CQRS** | MediatR |
-| **Validation** | FluentValidation |
-| **API Documentation** | Scalar |
-| **Logging** | Serilog |
+---
 
-## 📁 Solution Structure
+## Tech Stack
 
-The project follows **Clean Architecture** with the following 4 layers:
+| Layer | Technology |
+|---|---|
+| **Frontend** | Blazor Server, MudBlazor |
+| **Backend** | .NET 10, ASP.NET Core, MediatR, FluentValidation |
+| **Database** | SQL Server, EF Core 10 |
+| **Auth** | ASP.NET Core Identity, JWT Bearer |
+| **Testing** | xUnit, NSubstitute, FluentAssertions |
+| **Infrastructure** | Docker |
+
+---
+
+## Architecture
+
+The solution follows strict **Clean Architecture** with a unidirectional dependency rule:
 
 ```
-src/
-├── TaskManagerPro.Blazor.Domain/              # Core business logic
-│   └── Entities, Value Objects, Interfaces
-├── TaskManagerPro.Blazor.Application/         # Use cases & business rules
-│   └── Commands, Queries, Validators, DTOs
-├── TaskManagerPro.Blazor.Infrastructure/      # External integrations
-│   └── DbContext, Repositories, Identity
-└── TaskManagerPro.Blazor.Web/                 # Blazor Server UI
-    └── Components, Pages, Services
-
-tests/
-└── TaskManagerPro.Blazor.Tests/               # Unit & Integration Tests
+┌─────────────────────────────────────────────┐
+│               Web (Blazor Server)            │  ← UI, Components, Pages
+│         Razor Pages · MudBlazor · Services   │
+├─────────────────────────────────────────────┤
+│                Infrastructure                │  ← EF Core, Identity, JWT
+│     Repositories · DbContext · Services      │
+├─────────────────────────────────────────────┤
+│                 Application                  │  ← Use Cases (CQRS)
+│    Commands · Queries · Handlers · DTOs      │
+├─────────────────────────────────────────────┤
+│                   Domain                     │  ← Business Rules (no deps)
+│       Entities · Enums · Interfaces          │
+└─────────────────────────────────────────────┘
+         Dependencies point inward only
 ```
 
-### Layer Responsibilities
+**Layer responsibilities:**
 
-- **Domain**: Contains business entities and core business rules
-- **Application**: Implements use cases using CQRS pattern via MediatR
-- **Infrastructure**: Data access, database context, repositories, external services
-- **Web**: Blazor Server components, pages, and user interface
+- **Domain** — Core entities (`TaskItem`, `AppUser`, `Milestone`, `Notification`) with private setters and explicit state-transition methods. Zero external dependencies.
+- **Application** — CQRS use cases via MediatR. Commands mutate state; queries return DTOs. FluentValidation pipeline behavior runs before every handler.
+- **Infrastructure** — EF Core `ApplicationDbContext`, generic `Repository<T>`, ASP.NET Core Identity, JWT generation, and service implementations.
+- **Web** — Blazor Server components and pages. Auth state is stored in `localStorage` via `CustomAuthStateProvider` and read through JS interop.
 
-## 📋 Prerequisites
+---
 
-- **.NET 10 SDK** or later ([Download](https://dotnet.microsoft.com/download))
-- **Docker** (for SQL Server) ([Download](https://www.docker.com/products/docker-desktop))
-- **Visual Studio 2022** or **VS Code** (optional)
+## Getting Started
 
-## 🚀 Getting Started
+### Prerequisites
 
-### 1. SQL Server Setup
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- Visual Studio 2022+ or VS Code (optional)
 
-Start a SQL Server 2022 container:
+### 1. Start SQL Server
 
 ```bash
-docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourPassword@123" \
-  -p 1433:1433 \
-  --name sqlserver2022 \
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Admin1234!" \
+  -p 1433:1433 --name sqlserver-taskmanager \
   -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-### 2. Build the Solution
+### 2. Clone and Build
 
 ```bash
+git clone https://github.com/nmino1984/TaskManagerPro.Blazor.git
+cd TaskManagerPro.Blazor
 dotnet build
 ```
 
-### 3. Apply Database Migrations
+### 3. Apply Migrations
 
 ```bash
-dotnet ef database update --project src/TaskManagerPro.Blazor.Infrastructure
+cd src/TaskManagerPro.Blazor.Infrastructure
+dotnet ef database update --startup-project ../TaskManagerPro.Blazor.Web
 ```
 
-### 4. Run the Application
+### 4. Run the App
 
 ```bash
 dotnet run --project src/TaskManagerPro.Blazor.Web
 ```
 
-The application will be available at `https://localhost:7000`
+Open **http://localhost:5026** in your browser.
 
-## 🧪 Running Tests
+### Demo Credentials
+
+| Field | Value |
+|---|---|
+| Email | `demo@taskmanager.com` |
+| Password | `Demo1234!` |
+
+> Register a new account if no demo data has been seeded.
+
+---
+
+## Running Tests
 
 ```bash
 dotnet test
 ```
 
-## 📝 License
+28 tests across Domain and Application layers (xUnit + NSubstitute + FluentAssertions).
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+---
 
-## ✨ Status
+## Project Structure
 
-🟡 **Work in Progress** - Core architecture established, implementing features and database integration.
+```
+TaskManagerPro.Blazor/
+├── src/
+│   ├── TaskManagerPro.Blazor.Domain/
+│   │   ├── Common/           # BaseEntity
+│   │   ├── Entities/         # TaskItem, AppUser, Milestone, Notification, SubTask
+│   │   ├── Enums/            # WorkTaskStatus, TaskPriority, MilestoneStatus
+│   │   └── Interfaces/       # IRepository<T>, IUnitOfWork
+│   │
+│   ├── TaskManagerPro.Blazor.Application/
+│   │   ├── Common/           # Behaviors, Exceptions, Interfaces
+│   │   └── Features/
+│   │       ├── Auth/         # Login, Register, UpdateProfile, ChangePassword
+│   │       ├── Tasks/        # CRUD + status commands, GetAllTasks query
+│   │       ├── Milestones/   # Create, Update, Delete, GetByTask
+│   │       ├── Notifications/# GetNotifications, MarkAsRead
+│   │       └── Users/        # GetAllUsers
+│   │
+│   ├── TaskManagerPro.Blazor.Infrastructure/
+│   │   ├── Extensions/       # InfrastructureServiceExtensions (DI wiring)
+│   │   ├── Identity/         # ApplicationUser
+│   │   ├── Persistence/
+│   │   │   ├── Context/      # ApplicationDbContext
+│   │   │   ├── Configurations/
+│   │   │   ├── Migrations/
+│   │   │   └── Repositories/ # Repository<T>, UnitOfWork
+│   │   └── Services/         # JWT, PasswordHasher, UserRegistration, IdentityUser
+│   │
+│   └── TaskManagerPro.Blazor.Web/
+│       ├── Components/
+│       │   ├── Dialogs/      # TaskDialog
+│       │   ├── Layout/       # MainLayout, NavMenu
+│       │   └── Pages/        # Dashboard, Tasks, TaskDetail, Milestones,
+│       │                     # Notifications, Profile, Login, Register
+│       ├── Pages/            # AuthenticatedPageBase
+│       └── Services/         # AuthService, CustomAuthStateProvider,
+│                             # NotificationCountService
+│
+└── tests/
+    └── TaskManagerPro.Blazor.Tests/
+        ├── Domain/           # TaskItemTests, MilestoneTests
+        └── Application/      # Handler tests (Create/Update Task, Login, Register)
+```
+
+---
+
+## Future Improvements
+
+- **Email verification** — Account confirmation flow via SendGrid
+- **Avatar upload** — Profile picture storage with Azure Blob Storage
+- **Overdue notifications** — Automated background jobs with Hangfire
+- **Dashboard analytics** — Charts and burndown graphs with a charting library
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
