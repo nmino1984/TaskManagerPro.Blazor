@@ -1,0 +1,292 @@
+@page "/profile"
+@rendermode InteractiveServer
+@inherits TaskManagerPro.Blazor.Web.Pages.AuthenticatedPageBase
+
+@using System.ComponentModel.DataAnnotations
+@using MediatR
+@using TaskManagerPro.Blazor.Application.Features.Auth.Queries.GetUserProfile
+@using TaskManagerPro.Blazor.Application.Features.Auth.Commands.UpdateProfile
+@using TaskManagerPro.Blazor.Application.Features.Auth.Commands.ChangePassword
+
+@inject IMediator Mediator
+@inject ISnackbar Snackbar
+
+<PageTitle>My Profile — TaskManager Pro</PageTitle>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else
+{
+    <MudStack Row="false" Spacing="6">
+
+        @* Header *@
+        <MudPaper Elevation="2" Class="pa-6">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+                <MudAvatar Color="Color.Secondary" Style="width:72px;height:72px;font-size:1.8rem;">
+                    @_initials
+                </MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5">@_fullName</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@_profileForm.Email</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        @* Personal Information *@
+        <MudPaper Elevation="2" Class="pa-6">
+            <MudText Typo="Typo.h6" Class="mb-4">Personal Information</MudText>
+
+            <EditForm Model="_profileForm" OnValidSubmit="SaveProfileAsync">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="First Name"
+                                      @bind-Value="_profileForm.FirstName"
+                                      For="() => _profileForm.FirstName"
+                                      Variant="Variant.Outlined"
+                                      Disabled="_isSavingProfile" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Last Name"
+                                      @bind-Value="_profileForm.LastName"
+                                      For="() => _profileForm.LastName"
+                                      Variant="Variant.Outlined"
+                                      Disabled="_isSavingProfile" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Email"
+                                      @bind-Value="_profileForm.Email"
+                                      For="() => _profileForm.Email"
+                                      InputType="InputType.Email"
+                                      Variant="Variant.Outlined"
+                                      Disabled="_isSavingProfile" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+                    <MudButton ButtonType="ButtonType.Submit"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_isSavingProfile"
+                               StartIcon="@Icons.Material.Filled.Save">
+                        @if (_isSavingProfile)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Saving…</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+
+        @* Change Password *@
+        <MudPaper Elevation="2" Class="pa-6">
+            <MudText Typo="Typo.h6" Class="mb-4">Change Password</MudText>
+
+            <EditForm Model="_passwordForm" OnValidSubmit="ChangePasswordAsync">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Current Password"
+                                      @bind-Value="_passwordForm.CurrentPassword"
+                                      For="() => _passwordForm.CurrentPassword"
+                                      InputType="_showCurrent ? InputType.Text : InputType.Password"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showCurrent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="() => _showCurrent = !_showCurrent"
+                                      Variant="Variant.Outlined"
+                                      Disabled="_isSavingPassword" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="New Password"
+                                      @bind-Value="_passwordForm.NewPassword"
+                                      For="() => _passwordForm.NewPassword"
+                                      InputType="_showNew ? InputType.Text : InputType.Password"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showNew ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="() => _showNew = !_showNew"
+                                      Variant="Variant.Outlined"
+                                      Disabled="_isSavingPassword" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Confirm New Password"
+                                      @bind-Value="_passwordForm.ConfirmPassword"
+                                      For="() => _passwordForm.ConfirmPassword"
+                                      InputType="_showConfirm ? InputType.Text : InputType.Password"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showConfirm ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="() => _showConfirm = !_showConfirm"
+                                      Variant="Variant.Outlined"
+                                      Disabled="_isSavingPassword" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+                    <MudButton ButtonType="ButtonType.Submit"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_isSavingPassword"
+                               StartIcon="@Icons.Material.Filled.Lock">
+                        @if (_isSavingPassword)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Updating…</span>
+                        }
+                        else
+                        {
+                            <span>Update Password</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+
+    </MudStack>
+}
+
+@code {
+    private sealed class ProfileModel
+    {
+        [Required(ErrorMessage = "First name is required.")]
+        [MaxLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Last name is required.")]
+        [MaxLength(100)]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    private sealed class PasswordModel
+    {
+        [Required(ErrorMessage = "Current password is required.")]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "New password is required.")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters.")]
+        [RegularExpression(@"^(?=.*[A-Z])(?=.*\d).+$",
+            ErrorMessage = "Password must contain at least one uppercase letter and one number.")]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please confirm your new password.")]
+        [Compare(nameof(NewPassword), ErrorMessage = "Passwords do not match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    private readonly ProfileModel  _profileForm  = new();
+    private readonly PasswordModel _passwordForm = new();
+
+    private Guid   _userId;
+    private string _fullName = string.Empty;
+    private string _initials = string.Empty;
+    private bool   _isLoading       = true;
+    private bool   _isSavingProfile;
+    private bool   _isSavingPassword;
+    private bool   _showCurrent;
+    private bool   _showNew;
+    private bool   _showConfirm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var authState    = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdString = authState.User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _userId = userId;
+
+        try
+        {
+            var profile = await Mediator.Send(new GetUserProfileQuery(_userId));
+
+            _profileForm.FirstName = profile.FirstName;
+            _profileForm.LastName  = profile.LastName;
+            _profileForm.Email     = profile.Email;
+            _fullName = $"{profile.FirstName} {profile.LastName}".Trim();
+            _initials = string.Concat(
+                profile.FirstName.Length > 0 ? profile.FirstName[0..1] : string.Empty,
+                profile.LastName.Length  > 0 ? profile.LastName[0..1]  : string.Empty);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading profile: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        _isSavingProfile = true;
+        try
+        {
+            await Mediator.Send(new UpdateProfileCommand(
+                _userId, _profileForm.FirstName, _profileForm.LastName, _profileForm.Email));
+
+            _fullName = $"{_profileForm.FirstName} {_profileForm.LastName}".Trim();
+            _initials = string.Concat(
+                _profileForm.FirstName.Length > 0 ? _profileForm.FirstName[0..1] : string.Empty,
+                _profileForm.LastName.Length  > 0 ? _profileForm.LastName[0..1]  : string.Empty);
+
+            Snackbar.Add("Profile updated successfully.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSavingProfile = false;
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _isSavingPassword = true;
+        try
+        {
+            await Mediator.Send(new ChangePasswordCommand(
+                _userId, _passwordForm.CurrentPassword, _passwordForm.NewPassword));
+
+            _passwordForm.CurrentPassword = string.Empty;
+            _passwordForm.NewPassword     = string.Empty;
+            _passwordForm.ConfirmPassword = string.Empty;
+
+            Snackbar.Add("Password updated successfully.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSavingPassword = false;
+        }
+    }
+}
