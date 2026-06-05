@@ -24,6 +24,7 @@ public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
             ?? throw new NotFoundException(nameof(TaskItem), request.Id);
 
         WorkTaskStatus previousStatus = task.Status;
+        Guid? previousAssignedTo = task.AssignedToUserId;
         task.Update(request.Title, request.Description, request.DueDate, request.Priority, request.AssignedToUserId);
 
         if (request.Status.HasValue)
@@ -56,6 +57,15 @@ public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
 
             if (notification is not null)
                 await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+        }
+
+        if (request.AssignedToUserId.HasValue && request.AssignedToUserId != previousAssignedTo)
+        {
+            var assignmentNotification = new Notification(
+                "Task assigned to you",
+                $"'{task.Title}' has been assigned to you.",
+                request.AssignedToUserId.Value, task.Id);
+            await _unitOfWork.Notifications.AddAsync(assignmentNotification, cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

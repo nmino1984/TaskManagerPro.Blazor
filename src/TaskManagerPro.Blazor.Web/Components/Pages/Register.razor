@@ -174,7 +174,17 @@
         try
         {
             await AuthService.RegisterAsync(_model.FirstName, _model.LastName, _model.Email, _model.Password);
-            _registrationSuccess = true;
+
+            try
+            {
+                await AuthService.LoginAsync(_model.Email, _model.Password);
+                Navigation.NavigateTo("/");
+            }
+            catch
+            {
+                // Auto-login failed — show success message so the user can sign in manually
+                _registrationSuccess = true;
+            }
         }
         catch (Exception ex)
         {

@@ -45,6 +45,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IPasswordHasher, PasswordHasherService>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGeneratorService>();
+        services.AddScoped<IUserRegistrationService, UserRegistrationService>();
 
         // Open-generic registration runs all FluentValidation validators before each handler
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

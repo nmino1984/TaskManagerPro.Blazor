@@ -5,9 +5,11 @@
 @using TaskManagerPro.Blazor.Application.Features.Tasks.Queries.GetAllTasks
 @using TaskManagerPro.Blazor.Application.Features.Users.Queries.GetAllUsers
 @using TaskManagerPro.Blazor.Domain.Enums
+@using TaskManagerPro.Blazor.Web.Services
 
 @inject IMediator Mediator
 @inject ISnackbar Snackbar
+@inject NotificationCountService NotificationCount
 
 <MudDialog>
     <TitleContent>
@@ -164,6 +166,9 @@
                     _model.Title, _model.Description, _model.DueDate?.Date,
                     _model.Priority, UserId, _model.AssignedToUserId));
                 Snackbar.Add("Task created successfully.", Severity.Success);
+
+                if (_model.AssignedToUserId == UserId)
+                    NotificationCount.Increment();
             }
             else
             {
@@ -172,6 +177,9 @@
                     _model.DueDate?.Date, _model.Priority, _model.Status,
                     _model.AssignedToUserId));
                 Snackbar.Add("Task updated successfully.", Severity.Success);
+
+                if (_model.AssignedToUserId == UserId && ExistingTask.AssignedToUserId != UserId)
+                    NotificationCount.Increment();
             }
 
             MudDialog.Close(DialogResult.Ok(true));

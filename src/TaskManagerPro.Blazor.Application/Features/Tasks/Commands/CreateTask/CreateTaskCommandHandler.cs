@@ -21,6 +21,15 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
         var notification = new Notification("Task created", $"Task '{request.Title}' has been created.", request.UserId, task.Id);
         await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
 
+        if (request.AssignedToUserId.HasValue && request.AssignedToUserId.Value != request.UserId)
+        {
+            var assignmentNotification = new Notification(
+                "New task assigned to you",
+                $"'{task.Title}' has been assigned to you.",
+                request.AssignedToUserId.Value, task.Id);
+            await _unitOfWork.Notifications.AddAsync(assignmentNotification, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return task.Id;
     }

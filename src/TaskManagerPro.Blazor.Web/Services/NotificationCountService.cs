@@ -14,4 +14,10 @@ public class NotificationCountService
         UnreadCount = count;
         OnCountChanged?.Invoke();
     }
+
+    public void Increment()
+    {
+        UnreadCount++;
+        OnCountChanged?.Invoke();
+    }
 }

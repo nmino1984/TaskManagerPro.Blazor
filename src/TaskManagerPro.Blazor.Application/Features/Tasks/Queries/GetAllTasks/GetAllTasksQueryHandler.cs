@@ -16,7 +16,7 @@ public class GetAllTasksQueryHandler : IRequestHandler<GetAllTasksQuery, PagedRe
     public async Task<PagedResult<TaskItemDto>> Handle(GetAllTasksQuery request, CancellationToken cancellationToken)
     {
         var tasks = (await _unitOfWork.Tasks.FindAsync(
-            t => t.UserId == request.UserId && !t.IsDeleted,
+            t => (t.UserId == request.UserId || t.AssignedToUserId == request.UserId) && !t.IsDeleted,
             cancellationToken)).ToList();
 
         var items = tasks

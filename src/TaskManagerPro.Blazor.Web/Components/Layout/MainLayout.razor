@@ -1,11 +1,16 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @using System.Security.Claims
+@using MediatR
+@using TaskManagerPro.Blazor.Application.Features.Notifications.Queries.GetNotifications
+@using TaskManagerPro.Blazor.Domain.Enums
 @using TaskManagerPro.Blazor.Web.Services
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject AuthService AuthSvc
 @inject NotificationCountService NotificationCount
+@inject IMediator Mediator
+@inject IServiceScopeFactory ScopeFactory
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -59,10 +64,12 @@
     private int _unreadCount;
     private string _fullName = string.Empty;
     private string _initials = string.Empty;
+    private Guid _userId;
 
     protected override void OnInitialized()
     {
         NotificationCount.OnCountChanged += OnBadgeCountChanged;
+        NavManager.LocationChanged += OnLocationChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -81,8 +88,35 @@
                 firstName.Length > 0 ? firstName[0..1] : string.Empty,
                 lastName.Length > 0  ? lastName[0..1]  : string.Empty);
 
+            var userIdClaim = user.FindFirst("sub")?.Value;
+            if (Guid.TryParse(userIdClaim, out var userId))
+            {
+                _userId = userId;
+                await LoadNotificationCountAsync();
+            }
+
             StateHasChanged();
         }
+    }
+
+    // Uses its own scope so the DbContext doesn't conflict with the page's concurrent DB operations
+    private async Task LoadNotificationCountAsync()
+    {
+        if (_userId == Guid.Empty) return;
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var notifications = await mediator.Send(new GetNotificationsQuery(_userId));
+            var unread = notifications.Count(n => n.Status == NotificationStatus.Unread);
+            NotificationCount.SetCount(unread);
+        }
+        catch { /* fail silently — badge refreshes on next navigation */ }
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _ = LoadNotificationCountAsync();
     }
 
     private void OnBadgeCountChanged()
@@ -95,5 +129,9 @@
 
     private async Task Logout() => await AuthSvc.LogoutAsync();
 
-    public void Dispose() => NotificationCount.OnCountChanged -= OnBadgeCountChanged;
+    public void Dispose()
+    {
+        NotificationCount.OnCountChanged -= OnBadgeCountChanged;
+        NavManager.LocationChanged -= OnLocationChanged;
+    }
 }
