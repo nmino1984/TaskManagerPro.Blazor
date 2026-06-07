@@ -10,6 +10,7 @@ public class CreateTaskCommandValidator : AbstractValidator<CreateTaskCommand>
             .NotEmpty().WithMessage("Title is required.")
             .MaximumLength(200).WithMessage("Title must not exceed 200 characters.");
 
+        // TODO: add min length for description when we have UX spec for it
         RuleFor(x => x.Description)
             .MaximumLength(500).WithMessage("Description must not exceed 500 characters.");
 

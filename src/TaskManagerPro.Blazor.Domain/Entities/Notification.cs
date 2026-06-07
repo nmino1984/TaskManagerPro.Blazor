@@ -3,10 +3,6 @@ using TaskManagerPro.Blazor.Domain.Enums;
 
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
-/// <summary>
-/// An in-app alert delivered to a user in response to a domain event,
-/// such as a task approaching its deadline.
-/// </summary>
 public class Notification : BaseEntity
 {
     private NotificationStatus _status = NotificationStatus.Unread;

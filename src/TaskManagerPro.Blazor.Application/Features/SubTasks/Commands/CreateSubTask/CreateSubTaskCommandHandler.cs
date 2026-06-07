@@ -5,7 +5,6 @@ using TaskManagerPro.Blazor.Domain.Interfaces;
 
 namespace TaskManagerPro.Blazor.Application.Features.SubTasks.Commands.CreateSubTask;
 
-// Verifies the parent task exists to prevent orphaned subtasks with an invalid TaskItemId
 public class CreateSubTaskCommandHandler : IRequestHandler<CreateSubTaskCommand, Guid>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -27,4 +26,7 @@ public class CreateSubTaskCommandHandler : IRequestHandler<CreateSubTaskCommand,
 
         return subtask.Id;
     }
+
+    // TODO: consider moving validation here instead of relying only on the validator
+    private static bool HasValidParent(Guid taskItemId) => taskItemId != Guid.Empty;
 }

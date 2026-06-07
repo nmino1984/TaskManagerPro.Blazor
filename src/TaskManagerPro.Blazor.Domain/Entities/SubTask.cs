@@ -2,10 +2,6 @@ using TaskManagerPro.Blazor.Domain.Common;
 
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
-/// <summary>
-/// An atomic step within a parent TaskItem. Subtasks allow partial completion
-/// tracking without elevating every minor step to a full task.
-/// </summary>
 public class SubTask : BaseEntity
 {
     private bool _isCompleted;

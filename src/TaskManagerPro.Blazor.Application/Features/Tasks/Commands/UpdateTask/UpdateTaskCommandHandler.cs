@@ -7,9 +7,7 @@ using TaskManagerPro.Blazor.Domain.Interfaces;
 
 namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.UpdateTask;
 
-/// <summary>
-/// Status transitions go through domain methods so business rules are never bypassed.
-/// </summary>
+// Status changes go through domain methods — don't call _status directly
 public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
 {
     private readonly IUnitOfWork _unitOfWork;

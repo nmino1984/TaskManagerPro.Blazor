@@ -6,7 +6,6 @@ using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptio
 
 namespace TaskManagerPro.Blazor.Application.Features.Notifications.Commands.MarkAsRead;
 
-// Status transition goes through the domain method to keep it inside the aggregate
 public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 {
     private readonly IUnitOfWork _unitOfWork;

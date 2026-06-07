@@ -56,9 +56,7 @@ public class UpdateTaskCommandHandlerTests
 
         var command = new UpdateTaskCommand(taskId, "Title", "Desc", null, TaskPriority.Low);
 
-        var act = () => _handler.Handle(command, CancellationToken.None);
-
-        await act.Should().ThrowAsync<NotFoundException>();
+        await Assert.ThrowsAsync<NotFoundException>(() => _handler.Handle(command, CancellationToken.None));
     }
 
     [Fact]

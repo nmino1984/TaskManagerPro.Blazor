@@ -21,11 +21,11 @@ public class RegisterCommandHandlerTests
 
     public RegisterCommandHandlerTests()
     {
-        _unitOfWork           = Substitute.For<IUnitOfWork>();
-        _usersRepo            = Substitute.For<IRepository<AppUser>>();
-        _passwordHasher       = Substitute.For<IPasswordHasher>();
-        _registrationService  = Substitute.For<IUserRegistrationService>();
-        _emailService         = Substitute.For<IEmailService>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+        _usersRepo = Substitute.For<IRepository<AppUser>>();
+        _passwordHasher = Substitute.For<IPasswordHasher>();
+        _registrationService = Substitute.For<IUserRegistrationService>();
+        _emailService = Substitute.For<IEmailService>();
         _verificationSettings = Substitute.For<IEmailVerificationSettings>();
 
         _unitOfWork.Users.Returns(_usersRepo);

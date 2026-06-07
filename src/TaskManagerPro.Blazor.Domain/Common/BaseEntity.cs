@@ -1,9 +1,5 @@
 namespace TaskManagerPro.Blazor.Domain.Common;
 
-/// <summary>
-/// Base for all domain entities. Provides identity, audit timestamps,
-/// and soft-delete so records are never physically removed from the database.
-/// </summary>
 public abstract class BaseEntity
 {
     private DateTime _updatedAt = DateTime.UtcNow;

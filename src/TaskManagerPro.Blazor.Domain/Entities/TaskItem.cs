@@ -3,10 +3,6 @@ using TaskManagerPro.Blazor.Domain.Enums;
 
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
-/// <summary>
-/// Core aggregate root. Represents a unit of work assigned to a user,
-/// with lifecycle managed through explicit status transitions.
-/// </summary>
 public class TaskItem : BaseEntity
 {
     private WorkTaskStatus _status = WorkTaskStatus.Pending;

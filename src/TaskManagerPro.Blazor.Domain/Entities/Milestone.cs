@@ -3,10 +3,6 @@ using TaskManagerPro.Blazor.Domain.Enums;
 
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
-/// <summary>
-/// A significant checkpoint within a task's timeline. Unlike subtasks, milestones
-/// carry a target date and can become Overdue, enabling deadline-aware reporting.
-/// </summary>
 public class Milestone : BaseEntity
 {
     private MilestoneStatus _status = MilestoneStatus.Pending;

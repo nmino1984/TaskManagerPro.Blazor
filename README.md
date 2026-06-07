@@ -1,65 +1,65 @@
-# TaskManagerPro.Blazor
+﻿# TaskManagerPro.Blazor
 
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
 ![Blazor Server](https://img.shields.io/badge/Blazor-Server-7B2FBE?logo=blazor)
+![Tests](https://img.shields.io/badge/tests-28%20passing-brightgreen)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
-A professional task management system built with **Blazor Server** and **Clean Architecture**.
+A task management app built with Blazor Server and Clean Architecture. The goal was to practice building something real — not a tutorial CRUD, but a system with proper auth, external integrations, CQRS, and a layered codebase that doesn't turn into spaghetti as it grows.
 
 ---
 
-## Features
+## What it does
 
-- **Task Management** — Create, update, and delete tasks with subtasks and milestones
-- **Task Assignment** — Assign tasks to team members with real-time badge notifications
-- **Notification System** — Unread badge counter that updates automatically on assignment and status changes
-- **JWT Authentication** — Secure login and registration backed by ASP.NET Core Identity
-- **User Profiles** — Update personal information and change password from a dedicated profile page
-- **Priority & Status Tracking** — Four priority levels and full lifecycle transitions (Pending → In Progress → Completed / Cancelled)
-- **Overdue Detection** — Dashboard highlights tasks that have passed their due date
+- Full task lifecycle: create, assign, track status (Pending → In Progress → Completed / Cancelled), subtasks, milestones
+- Assign tasks to team members with in-app notifications and a live badge counter
+- Email verification on registration via SendGrid — 5-minute token, resend link available from both Login and /verify-email
+- Avatar upload through Cloudinary — instant preview on the profile page, header updates without a page reload
+- Dashboard with three MudChart graphs: tasks by status (donut), by priority (bar), tasks created over 6 months (line). Toggle between your assigned tasks and all tasks
+- Structured logging to a rotating daily file via Serilog
+- User profile page: edit personal info, change password
 
 ---
 
-## Tech Stack
+## Stack
 
-| Layer | Technology |
+| Layer | What |
 |---|---|
-| **Frontend** | Blazor Server, MudBlazor |
-| **Backend** | .NET 10, ASP.NET Core, MediatR, FluentValidation |
-| **Database** | SQL Server, EF Core 10 |
-| **Auth** | ASP.NET Core Identity, JWT Bearer |
-| **Testing** | xUnit, NSubstitute, FluentAssertions |
-| **Infrastructure** | Docker |
+| Frontend | Blazor Server, MudBlazor |
+| Backend | .NET 10, MediatR (CQRS), FluentValidation |
+| Database | SQL Server (Docker), EF Core 10 |
+| Auth | ASP.NET Core Identity, JWT, BCrypt |
+| Email | SendGrid |
+| Storage | Cloudinary (avatar images) |
+| Logging | Serilog (file sink, daily rolling) |
+| Testing | xUnit, NSubstitute, FluentAssertions |
 
 ---
 
 ## Architecture
 
-The solution follows strict **Clean Architecture** with a unidirectional dependency rule:
+Clean Architecture with a strict inward dependency rule — Domain knows nothing about EF Core, Blazor, or HTTP.
 
 ```
 ┌─────────────────────────────────────────────┐
-│               Web (Blazor Server)            │  ← UI, Components, Pages
-│         Razor Pages · MudBlazor · Services   │
+│               Web (Blazor Server)            │  ← Pages, Components, Services
 ├─────────────────────────────────────────────┤
-│                Infrastructure                │  ← EF Core, Identity, JWT
-│     Repositories · DbContext · Services      │
+│                Infrastructure                │  ← EF Core, Identity, JWT, Cloudinary
 ├─────────────────────────────────────────────┤
-│                 Application                  │  ← Use Cases (CQRS)
-│    Commands · Queries · Handlers · DTOs      │
+│                 Application                  │  ← CQRS handlers, DTOs, validators
 ├─────────────────────────────────────────────┤
-│                   Domain                     │  ← Business Rules (no deps)
-│       Entities · Enums · Interfaces          │
+│                   Domain                     │  ← Entities, enums, interfaces (no deps)
 └─────────────────────────────────────────────┘
-         Dependencies point inward only
 ```
 
-**Layer responsibilities:**
+**Why this structure?** Mostly to keep the domain model clean. Once you put EF Core attributes or Identity concerns into your entities, you start making decisions based on the ORM instead of the problem. Having a hard boundary also makes the Application layer testable without spinning up a database.
 
-- **Domain** — Core entities (`TaskItem`, `AppUser`, `Milestone`, `Notification`) with private setters and explicit state-transition methods. Zero external dependencies.
-- **Application** — CQRS use cases via MediatR. Commands mutate state; queries return DTOs. FluentValidation pipeline behavior runs before every handler.
-- **Infrastructure** — EF Core `ApplicationDbContext`, generic `Repository<T>`, ASP.NET Core Identity, JWT generation, and service implementations.
-- **Web** — Blazor Server components and pages. Auth state is stored in `localStorage` via `CustomAuthStateProvider` and read through JS interop.
+**A few implementation notes worth calling out:**
+
+- Auth state lives in localStorage via JS interop — CustomAuthStateProvider reads the JWT on each render cycle. This means the token, including claims like email_verified and vatar_url, travels with the request and doesn't require an extra DB call on every page load.
+- Avatar URL is stored as a JWT claim and refreshed after upload. The AvatarStateService fires an event so the header component re-renders without a reload.
+- There are two user representations: AppUser (Domain entity, owns the business rules) and ApplicationUser (ASP.NET Identity). The Identity layer is only used for password hashing and the email confirmation token — not for authorization decisions.
+- The FluentValidation pipeline behavior runs automatically before every MediatR handler. Validation errors surface as ValidationException, which the UI catches and displays.
 
 ---
 
@@ -69,7 +69,8 @@ The solution follows strict **Clean Architecture** with a unidirectional depende
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- Visual Studio 2022+ or VS Code (optional)
+- A free SendGrid account (for email verification)
+- A free Cloudinary account (for avatar uploads)
 
 ### 1. Start SQL Server
 
@@ -79,7 +80,7 @@ docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Admin1234!" \
   -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-### 2. Clone and Build
+### 2. Clone and build
 
 ```bash
 git clone https://github.com/nmino1984/TaskManagerPro.Blazor.git
@@ -87,14 +88,33 @@ cd TaskManagerPro.Blazor
 dotnet build
 ```
 
-### 3. Apply Migrations
+### 3. Configure credentials
+
+Create src/TaskManagerPro.Blazor.Web/appsettings.Development.json (this file is gitignored):
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,1433;Database=TaskManagerProDb;User Id=sa;Password=Admin1234!;TrustServerCertificate=True;"
+  },
+  "Jwt": { "Key": "your-secret-key-at-least-32-chars" },
+  "SendGrid": { "ApiKey": "SG.your-key-here" },
+  "Cloudinary": {
+    "CloudName": "your-cloud-name",
+    "ApiKey": "your-api-key",
+    "ApiSecret": "your-api-secret"
+  }
+}
+```
+
+### 4. Apply migrations
 
 ```bash
 cd src/TaskManagerPro.Blazor.Infrastructure
 dotnet ef database update --startup-project ../TaskManagerPro.Blazor.Web
 ```
 
-### 4. Run the App
+### 5. Run
 
 ```bash
 dotnet run --project src/TaskManagerPro.Blazor.Web
@@ -102,24 +122,15 @@ dotnet run --project src/TaskManagerPro.Blazor.Web
 
 Open **http://localhost:5026** in your browser.
 
-### Demo Credentials
-
-| Field | Value |
-|---|---|
-| Email | `demo@taskmanager.com` |
-| Password | `Demo1234!` |
-
-> Register a new account if no demo data has been seeded.
-
 ---
 
-## Running Tests
+## Tests
 
 ```bash
 dotnet test
 ```
 
-28 tests across Domain and Application layers (xUnit + NSubstitute + FluentAssertions).
+28 tests covering Domain entities and Application handlers (CQRS commands and queries). Uses NSubstitute for faking dependencies and FluentAssertions for readable assertions.
 
 ---
 
@@ -135,51 +146,45 @@ TaskManagerPro.Blazor/
 │   │   └── Interfaces/       # IRepository<T>, IUnitOfWork
 │   │
 │   ├── TaskManagerPro.Blazor.Application/
-│   │   ├── Common/           # Behaviors, Exceptions, Interfaces
+│   │   ├── Common/           # Pipeline behaviors, exceptions, interfaces
 │   │   └── Features/
-│   │       ├── Auth/         # Login, Register, UpdateProfile, ChangePassword
-│   │       ├── Tasks/        # CRUD + status commands, GetAllTasks query
+│   │       ├── Auth/         # Login, Register, RefreshToken, UpdateProfile, ChangePassword
+│   │       ├── Tasks/        # Full CRUD + status transitions
 │   │       ├── Milestones/   # Create, Update, Delete, GetByTask
 │   │       ├── Notifications/# GetNotifications, MarkAsRead
 │   │       └── Users/        # GetAllUsers
 │   │
 │   ├── TaskManagerPro.Blazor.Infrastructure/
-│   │   ├── Extensions/       # InfrastructureServiceExtensions (DI wiring)
-│   │   ├── Identity/         # ApplicationUser
-│   │   ├── Persistence/
-│   │   │   ├── Context/      # ApplicationDbContext
-│   │   │   ├── Configurations/
-│   │   │   ├── Migrations/
-│   │   │   └── Repositories/ # Repository<T>, UnitOfWork
-│   │   └── Services/         # JWT, PasswordHasher, UserRegistration, IdentityUser
+│   │   ├── Persistence/      # DbContext, Repositories, Migrations
+│   │   ├── Identity/         # ApplicationUser (ASP.NET Identity)
+│   │   └── Services/         # JWT, PasswordHasher, Cloudinary, Email
 │   │
 │   └── TaskManagerPro.Blazor.Web/
 │       ├── Components/
-│       │   ├── Dialogs/      # TaskDialog
-│       │   ├── Layout/       # MainLayout, NavMenu
-│       │   └── Pages/        # Dashboard, Tasks, TaskDetail, Milestones,
-│       │                     # Notifications, Profile, Login, Register
-│       ├── Pages/            # AuthenticatedPageBase
-│       └── Services/         # AuthService, CustomAuthStateProvider,
-│                             # NotificationCountService
+│       │   ├── Layout/       # MainLayout (avatar in header, notification badge)
+│       │   ├── Pages/        # Dashboard, Tasks, TaskDetail, Profile, Login, Register,
+│       │   │                 # VerifyEmail, Milestones, Notifications
+│       │   └── Dialogs/      # TaskDialog
+│       └── Services/         # AuthService, AvatarStateService, NotificationCountService,
+│                             # CustomAuthStateProvider
 │
 └── tests/
     └── TaskManagerPro.Blazor.Tests/
         ├── Domain/           # TaskItemTests, MilestoneTests
-        └── Application/      # Handler tests (Create/Update Task, Login, Register)
+        └── Application/      # Handler tests (Create/Update Task, Login, Register...)
 ```
 
 ---
 
-## Future Improvements
+## What's next
 
-- **Email verification** — Account confirmation flow via SendGrid
-- **Avatar upload** — Profile picture storage with Azure Blob Storage
-- **Overdue notifications** — Automated background jobs with Hangfire
-- **Dashboard analytics** — Charts and burndown graphs with a charting library
+- Overdue notifications via a background job (Hangfire or .NET Worker Service)
+- Task filtering and search on the task list page
+- Pagination on queries that currently load everything into memory
+- Role-based access — right now all authenticated users have the same permissions
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)

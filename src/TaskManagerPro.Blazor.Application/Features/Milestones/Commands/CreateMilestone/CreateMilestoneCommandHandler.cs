@@ -5,7 +5,6 @@ using TaskManagerPro.Blazor.Domain.Interfaces;
 
 namespace TaskManagerPro.Blazor.Application.Features.Milestones.Commands.CreateMilestone;
 
-// Verifies the parent task exists to prevent orphaned milestones
 public class CreateMilestoneCommandHandler : IRequestHandler<CreateMilestoneCommand, Guid>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -17,8 +16,9 @@ public class CreateMilestoneCommandHandler : IRequestHandler<CreateMilestoneComm
 
     public async Task<Guid> Handle(CreateMilestoneCommand request, CancellationToken cancellationToken)
     {
-        var task = await _unitOfWork.Tasks.GetByIdAsync(request.TaskItemId, cancellationToken)
-            ?? throw new NotFoundException(nameof(TaskItem), request.TaskItemId);
+        var task = await _unitOfWork.Tasks.GetByIdAsync(request.TaskItemId, cancellationToken);
+        if (task is null)
+            throw new NotFoundException(nameof(TaskItem), request.TaskItemId);
 
         var milestone = new Milestone(request.Title, request.Description, request.TargetDate, request.TaskItemId);
         await _unitOfWork.Milestones.AddAsync(milestone, cancellationToken);

@@ -2,10 +2,7 @@ using TaskManagerPro.Blazor.Domain.Common;
 
 namespace TaskManagerPro.Blazor.Domain.Entities;
 
-/// <summary>
-/// Represents an application user. Kept separate from ASP.NET Identity
-/// so the Domain layer has no dependency on the Identity infrastructure.
-/// </summary>
+// Kept separate from ASP.NET Identity to avoid pulling infra deps into Domain
 public class AppUser : BaseEntity
 {
     // Required by EF Core — not for direct use

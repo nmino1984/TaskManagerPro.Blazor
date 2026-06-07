@@ -7,7 +7,6 @@ using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptio
 
 namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.DeleteTask;
 
-// Ownership check prevents a user from deleting another user's tasks
 public class DeleteTaskCommandHandler : IRequestHandler<DeleteTaskCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
