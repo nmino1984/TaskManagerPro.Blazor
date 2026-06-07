@@ -17,11 +17,11 @@ public class UserRegistrationService : IUserRegistrationService
     {
         var identityUser = new ApplicationUser
         {
-            Id        = userId.ToString(),
-            UserName  = email,
-            Email     = email,
+            Id = userId.ToString(),
+            UserName = email,
+            Email = email,
             FirstName = firstName,
-            LastName  = lastName
+            LastName = lastName
         };
 
         var result = await _userManager.CreateAsync(identityUser, password);

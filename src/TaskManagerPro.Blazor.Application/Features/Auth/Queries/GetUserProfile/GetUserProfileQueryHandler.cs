@@ -19,6 +19,6 @@ public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, U
         var user = await _unitOfWork.Users.GetByIdAsync(request.UserId, cancellationToken)
             ?? throw new NotFoundException(nameof(AppUser), request.UserId);
 
-        return new UserProfileDto(user.Id, user.FirstName, user.LastName, user.Email);
+        return new UserProfileDto(user.Id, user.FirstName, user.LastName, user.Email, user.AvatarUrl);
     }
 }

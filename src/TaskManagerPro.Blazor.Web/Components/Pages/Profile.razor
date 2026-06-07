@@ -7,11 +7,24 @@
 @using TaskManagerPro.Blazor.Application.Features.Auth.Queries.GetUserProfile
 @using TaskManagerPro.Blazor.Application.Features.Auth.Commands.UpdateProfile
 @using TaskManagerPro.Blazor.Application.Features.Auth.Commands.ChangePassword
+@using TaskManagerPro.Blazor.Application.Features.Auth.Commands.UploadAvatar
+@using TaskManagerPro.Blazor.Web.Services
 
 @inject IMediator Mediator
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject AuthService AuthSvc
+
+<style>
+    .avatar-hover-wrapper:hover .avatar-overlay { opacity: 1; }
+</style>
 
 <PageTitle>My Profile — TaskManager Pro</PageTitle>
+
+@* Always in DOM — never inside a conditional, that's what caused _blazorFilesById errors *@
+<InputFile id="avatar-input" OnChange="OnAvatarFileSelected"
+           accept="image/jpeg,image/png,image/gif,image/webp"
+           style="display:none;" />
 
 @if (_isLoading)
 {
@@ -24,9 +37,39 @@ else
         @* Header *@
         <MudPaper Elevation="2" Class="pa-6">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
-                <MudAvatar Color="Color.Secondary" Style="width:72px;height:72px;font-size:1.8rem;">
-                    @_initials
-                </MudAvatar>
+                <div class="avatar-hover-wrapper"
+                     style="position:relative; display:inline-block; cursor:pointer;"
+                     @onclick="OpenFilePicker">
+                    @if (!string.IsNullOrEmpty(_avatarUrl))
+                    {
+                        <div style="width:120px;height:120px;border-radius:50%;overflow:hidden;">
+                            <img src="@_avatarUrl" alt="Profile photo"
+                                 style="width:100%;height:100%;object-fit:cover;" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudAvatar Color="Color.Secondary" Style="width:120px;height:120px;font-size:2.5rem;">
+                            @_initials
+                        </MudAvatar>
+                    }
+                    @if (_isUploadingAvatar)
+                    {
+                        <div style="position:absolute;top:0;left:0;width:120px;height:120px;border-radius:50%;
+                                    background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;">
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color:white;" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="avatar-overlay"
+                             style="position:absolute;top:0;left:0;width:120px;height:120px;border-radius:50%;
+                                    background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;
+                                    opacity:0;transition:opacity 0.2s ease;">
+                            <MudIcon Icon="@Icons.Material.Filled.CameraAlt" Style="color:white;" />
+                        </div>
+                    }
+                </div>
                 <MudStack Spacing="0">
                     <MudText Typo="Typo.h5">@_fullName</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">@_profileForm.Email</MudText>
@@ -193,19 +236,24 @@ else
     private readonly ProfileModel  _profileForm  = new();
     private readonly PasswordModel _passwordForm = new();
 
-    private Guid   _userId;
-    private string _fullName = string.Empty;
-    private string _initials = string.Empty;
-    private bool   _isLoading       = true;
-    private bool   _isSavingProfile;
-    private bool   _isSavingPassword;
-    private bool   _showCurrent;
-    private bool   _showNew;
-    private bool   _showConfirm;
+    private Guid    _userId;
+    private string  _fullName = string.Empty;
+    private string  _initials = string.Empty;
+    private string? _avatarUrl;
+    private bool    _isLoading       = true;
+    private bool    _isSavingProfile;
+    private bool    _isSavingPassword;
+    private bool    _isUploadingAvatar;
+    private bool    _showCurrent;
+    private bool    _showNew;
+    private bool    _showConfirm;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
+        await JS.InvokeVoidAsync("eval",
+            "window.triggerClick = id => { const el = document.getElementById(id); if (el) el.click(); };");
 
         var authState    = await AuthStateProvider.GetAuthenticationStateAsync();
         var userIdString = authState.User.FindFirst("sub")?.Value;
@@ -225,6 +273,7 @@ else
             _profileForm.FirstName = profile.FirstName;
             _profileForm.LastName  = profile.LastName;
             _profileForm.Email     = profile.Email;
+            _avatarUrl             = profile.AvatarUrl;
             _fullName = $"{profile.FirstName} {profile.LastName}".Trim();
             _initials = string.Concat(
                 profile.FirstName.Length > 0 ? profile.FirstName[0..1] : string.Empty,
@@ -287,6 +336,58 @@ else
         finally
         {
             _isSavingPassword = false;
+        }
+    }
+
+    private async Task OpenFilePicker()
+    {
+        if (!_isUploadingAvatar)
+            await JS.InvokeVoidAsync("triggerClick", "avatar-input");
+    }
+
+    private async Task OnAvatarFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        string[] allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+        if (!allowed.Contains(file.ContentType))
+        {
+            Snackbar.Add("Only JPG, PNG, GIF or WebP images are supported.", Severity.Warning);
+            return;
+        }
+
+        if (file.Size > 2 * 1024 * 1024)
+        {
+            Snackbar.Add("Image must be smaller than 2 MB.", Severity.Warning);
+            return;
+        }
+
+        var previousUrl = _avatarUrl;
+        _isUploadingAvatar = true;
+
+        try
+        {
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024).CopyToAsync(ms);
+
+            // Show local preview while Cloudinary upload is in progress
+            _avatarUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+            StateHasChanged();
+
+            ms.Position = 0;
+            _avatarUrl = await Mediator.Send(new UploadAvatarCommand(ms, file.Name, _userId));
+            await AuthSvc.RefreshTokenAsync(_userId);
+            Snackbar.Add("Photo updated.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _avatarUrl = previousUrl;
+            Snackbar.Add($"Upload failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isUploadingAvatar = false;
+            StateHasChanged();
         }
     }
 }

@@ -36,18 +36,18 @@ public class EmailService : IEmailService
         var subject = "Verify your TaskManager Pro account";
         var htmlContent = $"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #7B2FBE;">Welcome to TaskManager Pro, {toName}!</h2>
-                <p>Please verify your email address by clicking the button below.</p>
+                <h2 style="color: #7B2FBE;">Hey {toName}, welcome aboard!</h2>
+                <p>Thanks for signing up. One quick step before you get started — just confirm your email address and you're all set.</p>
                 <p style="margin: 32px 0;">
                     <a href="{verificationLink}"
                        style="background-color: #7B2FBE; color: white; padding: 12px 28px;
                               text-decoration: none; border-radius: 6px; font-weight: bold;">
-                        Verify Email Address
+                        Confirm my email
                     </a>
                 </p>
                 <p style="color: #666; font-size: 14px;">
-                    This link expires in {_configuration["EmailVerification:ExpirationMinutes"] ?? "60"} minutes.<br/>
-                    If you did not create an account, you can safely ignore this email.
+                    This link is only valid for {_configuration["EmailVerification:ExpirationMinutes"] ?? "60"} minutes, so don't wait too long.<br/>
+                    Didn't sign up for TaskManager Pro? No worries — just ignore this email.
                 </p>
             </div>
             """;

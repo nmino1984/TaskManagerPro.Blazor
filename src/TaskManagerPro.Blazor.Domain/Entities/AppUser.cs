@@ -31,11 +31,19 @@ public class AppUser : BaseEntity
     private bool _isEmailVerified = false;
     public bool IsEmailVerified => _isEmailVerified;
 
+    private string? _avatarUrl;
+    public string? AvatarUrl => _avatarUrl;
+
     private string? _verificationToken;
     public string? VerificationToken => _verificationToken;
 
     private DateTime? _verificationTokenExpiry;
     public DateTime? VerificationTokenExpiry => _verificationTokenExpiry;
+
+    public void SetAvatarUrl(string url)
+    {
+        _avatarUrl = url;
+    }
 
     public void SetVerificationToken(string token, DateTime expiry)
     {

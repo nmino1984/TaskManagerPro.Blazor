@@ -46,9 +46,10 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
             });
         }
 
-        var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.FirstName, user.LastName, user.IsEmailVerified);
+        var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user.Id, user.Email, user.FirstName, user.LastName, user.IsEmailVerified, user.AvatarUrl);
 
-        // Token still valid — allow login but signal the UI to show a verification reminder
+        // token still valid — let them in but IsEmailVerified=false flows into the JWT so the
+        // banner in MainLayout picks it up without us needing to block the user entirely
         return new LoginResult(token, user.Id, user.Email, expiresAt, user.IsEmailVerified);
     }
 }

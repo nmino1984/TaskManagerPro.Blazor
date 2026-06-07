@@ -1,6 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using MediatR;
 using Microsoft.AspNetCore.Components;
 using TaskManagerPro.Blazor.Application.Features.Auth.Commands.Login;
+using TaskManagerPro.Blazor.Application.Features.Auth.Commands.RefreshToken;
 using TaskManagerPro.Blazor.Application.Features.Auth.Commands.Register;
 using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptions.ValidationException;
 
@@ -16,12 +18,14 @@ public class AuthService
     private readonly IMediator _mediator;
     private readonly CustomAuthStateProvider _authStateProvider;
     private readonly NavigationManager _navigation;
+    private readonly AvatarStateService _avatarState;
 
-    public AuthService(IMediator mediator, CustomAuthStateProvider authStateProvider, NavigationManager navigation)
+    public AuthService(IMediator mediator, CustomAuthStateProvider authStateProvider, NavigationManager navigation, AvatarStateService avatarState)
     {
         _mediator = mediator;
         _authStateProvider = authStateProvider;
         _navigation = navigation;
+        _avatarState = avatarState;
     }
 
     public async Task<LoginResult> LoginAsync(string email, string password)
@@ -53,6 +57,16 @@ public class AuthService
             var message = ex.Errors.Values.SelectMany(e => e).FirstOrDefault() ?? ex.Message;
             throw new InvalidOperationException(message);
         }
+    }
+
+    public async Task RefreshTokenAsync(Guid userId)
+    {
+        var token = await _mediator.Send(new RefreshTokenCommand(userId));
+        await _authStateProvider.MarkUserAsAuthenticated(token);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        var avatarUrl = jwt.Claims.FirstOrDefault(c => c.Type == "avatar_url")?.Value;
+        _avatarState.SetAvatar(string.IsNullOrEmpty(avatarUrl) ? null : avatarUrl);
     }
 
     public async Task LogoutAsync()

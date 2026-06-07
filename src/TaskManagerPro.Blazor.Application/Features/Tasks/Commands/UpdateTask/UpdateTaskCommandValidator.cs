@@ -2,9 +2,6 @@ using FluentValidation;
 
 namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.UpdateTask;
 
-/// <summary>
-/// Validates UpdateTaskCommand before the handler executes.
-/// </summary>
 public class UpdateTaskCommandValidator : AbstractValidator<UpdateTaskCommand>
 {
     public UpdateTaskCommandValidator()

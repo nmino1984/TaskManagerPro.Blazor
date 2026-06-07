@@ -48,7 +48,8 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(BuildClaimsPrincipal(token))));
     }
 
-    // Removes the token and notifies subscribers so protected routes redirect to /login immediately
+    // FIXME: removing the token from localStorage doesn't invalidate it server-side — a stolen token
+    //        is still valid until expiry. Would need a server-side blacklist or short expiry to fix this.
     public async Task MarkUserAsLoggedOut()
     {
         await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", StorageKey);

@@ -48,6 +48,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IUserRegistrationService, UserRegistrationService>();
         services.AddScoped<IIdentityUserService, IdentityUserService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IPhotoService, CloudinaryPhotoService>();
         services.AddSingleton<IEmailVerificationSettings, EmailVerificationSettings>();
 
         // Open-generic registration runs all FluentValidation validators before each handler

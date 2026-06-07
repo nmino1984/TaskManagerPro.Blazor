@@ -15,6 +15,7 @@ public class GetAllTasksQueryHandler : IRequestHandler<GetAllTasksQuery, PagedRe
 
     public async Task<PagedResult<TaskItemDto>> Handle(GetAllTasksQuery request, CancellationToken cancellationToken)
     {
+        // TODO: this loads all user tasks into memory before paginating — fine for now but will hurt at scale
         var tasks = (await _unitOfWork.Tasks.FindAsync(
             t => (t.UserId == request.UserId || t.AssignedToUserId == request.UserId) && !t.IsDeleted,
             cancellationToken)).ToList();

@@ -31,7 +31,7 @@ public class LoginCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidCredentials_ReturnsLoginResult()
+    public async Task Login_ReturnsTokenAndEmail_OnSuccess()
     {
         var userId  = Guid.NewGuid();
         var user    = new AppUser("Jane", "Doe", "jane@test.com", "hashed");
@@ -42,7 +42,7 @@ public class LoginCommandHandlerTests
                   .Returns(new List<AppUser> { user });
 
         _passwordHasher.Verify("secret", user.PasswordHash).Returns(true);
-        _jwtGenerator.GenerateToken(Arg.Any<Guid>(), user.Email, user.FirstName, user.LastName, Arg.Any<bool>())
+        _jwtGenerator.GenerateToken(Arg.Any<Guid>(), user.Email, user.FirstName, user.LastName, Arg.Any<bool>(), Arg.Any<string?>())
                      .Returns(("tok_abc", expires));
 
         var result = await _handler.Handle(new LoginCommand("jane@test.com", "secret"), CancellationToken.None);

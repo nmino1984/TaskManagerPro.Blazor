@@ -8,11 +8,8 @@ using AppValidationException = TaskManagerPro.Blazor.Application.Common.Exceptio
 namespace TaskManagerPro.Blazor.Application.Features.Auth.Commands.Register;
 
 /// <summary>
-/// Password is hashed via IPasswordHasher before storage — plain text never touches this handler.
-/// Duplicate email check prevents silent overwrites of existing accounts.
-/// Both AppUser (domain) and ApplicationUser (Identity) are created so the user can log in.
-/// A verification token is generated and emailed — login is still allowed before verification,
-/// but the LoginResult signals IsEmailVerified so the UI can prompt the user.
+/// Creates both AppUser (domain) and ApplicationUser (Identity) so the two stores stay in sync.
+/// Login is allowed before email verification — IsEmailVerified on LoginResult signals the UI.
 /// </summary>
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
 {

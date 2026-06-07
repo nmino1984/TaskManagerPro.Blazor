@@ -21,6 +21,7 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.Property(u => u.IsEmailVerified).HasField("_isEmailVerified").HasDefaultValue(false);
         builder.Property(u => u.VerificationToken).HasField("_verificationToken").HasMaxLength(64);
         builder.Property(u => u.VerificationTokenExpiry).HasField("_verificationTokenExpiry");
+        builder.Property(u => u.AvatarUrl).HasField("_avatarUrl").HasMaxLength(500);
 
         builder.HasIndex(u => u.Email).IsUnique();
     }

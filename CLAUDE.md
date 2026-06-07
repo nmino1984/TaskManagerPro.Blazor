@@ -27,6 +27,12 @@
 - NEVER execute git commands (commit, push, add, reset) under any circumstance
 - Only the user decides when and what to commit
 
+## Claude Code Behavior
+- Always use --yes flag on any package install commands
+- If any file already exists, overwrite it without asking
+- Do not prompt for confirmation at any point
+- Never wait for user input during automated tasks
+
 ## Code Style — Natural Human Style
 - Do NOT add XML documentation to every method and property. Only document public interfaces, complex business logic, and non-obvious decisions. Simple CRUD methods need no comments.
 - Use concise variable names where context is clear: "tasks" not "taskItemDtoCollection", "user" not "authenticatedUserEntity", "id" not "taskItemIdentifier"

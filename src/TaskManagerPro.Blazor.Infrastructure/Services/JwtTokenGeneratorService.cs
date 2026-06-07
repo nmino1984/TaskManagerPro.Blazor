@@ -22,15 +22,15 @@ public class JwtTokenGeneratorService : IJwtTokenGenerator
 
     // Reads Jwt:Key, Jwt:Issuer, Jwt:Audience, and Jwt:ExpirationMinutes from configuration
     public (string Token, DateTime ExpiresAt) GenerateToken(
-        Guid userId, string email, string firstName, string lastName, bool isEmailVerified)
+        Guid userId, string email, string firstName, string lastName, bool isEmailVerified, string? avatarUrl)
     {
-        var key      = _configuration["Jwt:Key"]      ?? throw new InvalidOperationException("Jwt:Key is not configured.");
-        var issuer   = _configuration["Jwt:Issuer"]   ?? throw new InvalidOperationException("Jwt:Issuer is not configured.");
+        var key = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+        var issuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer is not configured.");
         var audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience is not configured.");
 
         int expirationMinutes = int.TryParse(_configuration["Jwt:ExpirationMinutes"], out int parsed) ? parsed : 60;
 
-        var signingKey  = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
         Claim[] claims =
@@ -40,16 +40,17 @@ public class JwtTokenGeneratorService : IJwtTokenGenerator
             new Claim(JwtRegisteredClaimNames.GivenName,  firstName),
             new Claim(JwtRegisteredClaimNames.FamilyName, lastName),
             new Claim(JwtRegisteredClaimNames.Jti,        Guid.NewGuid().ToString()),
-            new Claim("email_verified",                   isEmailVerified.ToString().ToLower())
+            new Claim("email_verified",                   isEmailVerified.ToString().ToLower()),
+            new Claim("avatar_url",                       avatarUrl ?? string.Empty)
         ];
 
         var expiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes);
 
         var token = new JwtSecurityToken(
-            issuer:             issuer,
-            audience:           audience,
-            claims:             claims,
-            expires:            expiresAt,
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: expiresAt,
             signingCredentials: credentials);
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);

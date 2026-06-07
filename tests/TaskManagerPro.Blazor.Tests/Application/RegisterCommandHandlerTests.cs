@@ -58,7 +58,7 @@ public class RegisterCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_DuplicateEmail_ThrowsValidationException()
+    public async Task Register_WithDuplicateEmail_ShouldFail()
     {
         var existing = new AppUser("Existing", "User", "taken@test.com", "hashed");
 

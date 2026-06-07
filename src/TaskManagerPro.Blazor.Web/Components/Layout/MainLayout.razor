@@ -12,6 +12,7 @@
 @inject NotificationCountService NotificationCount
 @inject IMediator Mediator
 @inject IServiceScopeFactory ScopeFactory
+@inject AvatarStateService AvatarState
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -33,7 +34,16 @@
                                Href="/notifications" />
             </MudBadge>
         </MudTooltip>
-        <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">@_initials</MudAvatar>
+        @if (!string.IsNullOrEmpty(_avatarUrl))
+        {
+            <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;" class="mr-2">
+                <img src="@_avatarUrl" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;" />
+            </div>
+        }
+        else
+        {
+            <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">@_initials</MudAvatar>
+        }
         <MudLink Href="/profile" Typo="Typo.body2" Color="Color.Inherit" Class="mr-2" Underline="Underline.Hover">@_fullName</MudLink>
         <MudTooltip Text="Logout">
             <MudIconButton Icon="@Icons.Material.Filled.Logout"
@@ -87,6 +97,7 @@
     private int _unreadCount;
     private string _fullName = string.Empty;
     private string _initials = string.Empty;
+    private string? _avatarUrl;
     private Guid _userId;
     private bool _isEmailVerified = true; // default true — banner only shows after auth state loads
     private string _userEmail = string.Empty;
@@ -97,6 +108,7 @@
     {
         NotificationCount.OnCountChanged += OnBadgeCountChanged;
         NavManager.LocationChanged += OnLocationChanged;
+        AvatarState.OnAvatarChanged += HandleAvatarChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -117,6 +129,8 @@
 
             _isEmailVerified = user.FindFirst("email_verified")?.Value == "true";
             _userEmail = user.FindFirst("email")?.Value ?? string.Empty;
+            _avatarUrl = user.FindFirst("avatar_url")?.Value;
+            if (string.IsNullOrEmpty(_avatarUrl)) _avatarUrl = null;
 
             var userIdClaim = user.FindFirst("sub")?.Value;
             if (Guid.TryParse(userIdClaim, out var userId))
@@ -169,9 +183,16 @@
         _resendEmailSent = result.Success;
     }
 
+    private void HandleAvatarChanged()
+    {
+        _avatarUrl = AvatarState.AvatarUrl;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         NotificationCount.OnCountChanged -= OnBadgeCountChanged;
         NavManager.LocationChanged -= OnLocationChanged;
+        AvatarState.OnAvatarChanged -= HandleAvatarChanged;
     }
 }

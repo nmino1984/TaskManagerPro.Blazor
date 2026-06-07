@@ -77,6 +77,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<NotificationCountService>();
+builder.Services.AddScoped<AvatarStateService>();
 
 WebApplication app;
 try
