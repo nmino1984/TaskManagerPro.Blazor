@@ -1,0 +1,148 @@
+@page "/verify-email"
+@layout EmptyLayout
+@rendermode InteractiveServer
+
+@using MediatR
+@using TaskManagerPro.Blazor.Application.Features.Auth.Commands.VerifyEmail
+@using TaskManagerPro.Blazor.Application.Features.Auth.Commands.ResendVerificationEmail
+
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Verify Email — TaskManager Pro</PageTitle>
+
+<div class="auth-container">
+    <MudCard Elevation="6" Class="auth-card">
+
+        <MudCardContent>
+            <div class="auth-logo">TaskManager Pro</div>
+
+            @if (_state == PageState.Loading)
+            {
+                <div class="d-flex flex-column align-center py-6">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.body2" Class="mt-4 mud-text-secondary">Verifying your email…</MudText>
+                </div>
+            }
+            else if (_state == PageState.Success)
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-5">
+                    Your email has been verified successfully. You can now sign in.
+                </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           Size="Size.Large" Href="/login">
+                    Go to Sign In
+                </MudButton>
+            }
+            else if (_state == PageState.AlreadyVerified)
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-5">
+                    Your email is already verified. No further action is needed.
+                </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           Size="Size.Large" Href="/login">
+                    Go to Sign In
+                </MudButton>
+            }
+            else if (_state == PageState.Error)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">
+                    @_message
+                </MudAlert>
+
+                @if (_resendSuccess)
+                {
+                    <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
+                        A new verification email has been sent. Please check your inbox.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudTextField T="string"
+                                  @bind-Value="_resendEmail"
+                                  Label="Enter your email to resend verification"
+                                  InputType="InputType.Email"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Email"
+                                  AdornmentColor="Color.Primary"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  Disabled="_resendLoading" />
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                               Size="Size.Large" OnClick="ResendAsync" Disabled="_resendLoading">
+                        @if (_resendLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Sending…</span>
+                        }
+                        else
+                        {
+                            <span>Resend Verification Email</span>
+                        }
+                    </MudButton>
+                }
+            }
+        </MudCardContent>
+
+        <MudCardActions Class="justify-center pb-4">
+            <MudText Typo="Typo.body2">
+                Back to <MudLink Href="/login" Color="Color.Primary">Sign In</MudLink>
+            </MudText>
+        </MudCardActions>
+
+    </MudCard>
+</div>
+
+@code {
+    private enum PageState { Loading, Success, AlreadyVerified, Error }
+
+    private PageState _state = PageState.Loading;
+    private string _message = string.Empty;
+    private string _resendEmail = string.Empty;
+    private bool _resendLoading;
+    private bool _resendSuccess;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var uri = new Uri(Navigation.Uri);
+        var qs  = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var token = qs["token"];
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _message = "No verification token was provided. Please use the link from your email.";
+            _state = PageState.Error;
+            StateHasChanged();
+            return;
+        }
+
+        var result = await Mediator.Send(new VerifyEmailCommand(token));
+
+        if (result.Success && result.Message.Contains("already"))
+            _state = PageState.AlreadyVerified;
+        else if (result.Success)
+            _state = PageState.Success;
+        else
+        {
+            _message = result.Message;
+            _state = PageState.Error;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ResendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_resendEmail)) return;
+
+        _resendLoading = true;
+        var result = await Mediator.Send(new ResendVerificationEmailCommand(_resendEmail));
+        _resendLoading = false;
+        _resendSuccess = result.Success;
+
+        if (!result.Success)
+            _message = result.Message;
+    }
+}

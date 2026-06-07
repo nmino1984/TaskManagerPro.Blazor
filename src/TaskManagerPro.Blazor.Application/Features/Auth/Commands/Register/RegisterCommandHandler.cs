@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using TaskManagerPro.Blazor.Application.Common.Interfaces;
 using TaskManagerPro.Blazor.Domain.Entities;
 using TaskManagerPro.Blazor.Domain.Interfaces;
@@ -10,18 +11,32 @@ namespace TaskManagerPro.Blazor.Application.Features.Auth.Commands.Register;
 /// Password is hashed via IPasswordHasher before storage — plain text never touches this handler.
 /// Duplicate email check prevents silent overwrites of existing accounts.
 /// Both AppUser (domain) and ApplicationUser (Identity) are created so the user can log in.
+/// A verification token is generated and emailed — login is still allowed before verification,
+/// but the LoginResult signals IsEmailVerified so the UI can prompt the user.
 /// </summary>
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUserRegistrationService _registrationService;
+    private readonly IEmailService _emailService;
+    private readonly IEmailVerificationSettings _verificationSettings;
+    private readonly ILogger<RegisterCommandHandler> _logger;
 
-    public RegisterCommandHandler(IUnitOfWork unitOfWork, IPasswordHasher passwordHasher, IUserRegistrationService registrationService)
+    public RegisterCommandHandler(
+        IUnitOfWork unitOfWork,
+        IPasswordHasher passwordHasher,
+        IUserRegistrationService registrationService,
+        IEmailService emailService,
+        IEmailVerificationSettings verificationSettings,
+        ILogger<RegisterCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _registrationService = registrationService;
+        _emailService = emailService;
+        _verificationSettings = verificationSettings;
+        _logger = logger;
     }
 
     public async Task<Guid> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -37,12 +52,27 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
         var user = new AppUser(request.FirstName, request.LastName, request.Email,
                                _passwordHasher.Hash(request.Password));
 
+        var token = Guid.NewGuid().ToString("N");
+        user.SetVerificationToken(token, DateTime.UtcNow.AddMinutes(_verificationSettings.ExpirationMinutes));
+
         await _unitOfWork.Users.AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Create the Identity record with the same Id so both tables stay in sync
         await _registrationService.CreateIdentityUserAsync(
             user.Id, request.FirstName, request.LastName, request.Email, request.Password, cancellationToken);
+
+        _logger.LogInformation("User registered: {Email} (Id: {UserId})", request.Email, user.Id);
+
+        var verificationLink = $"{_verificationSettings.BaseUrl}/verify-email?token={token}";
+        try
+        {
+            await _emailService.SendVerificationEmailAsync(request.Email, request.FirstName, verificationLink, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send verification email to {Email}", request.Email);
+        }
 
         return user.Id;
     }

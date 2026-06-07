@@ -44,3 +44,7 @@ Thumbs.db
 
 # Testing
 TestResults/
+
+# Logs
+logs/
+*.log

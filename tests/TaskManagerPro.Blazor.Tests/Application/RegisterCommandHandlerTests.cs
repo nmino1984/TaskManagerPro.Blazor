@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TaskManagerPro.Blazor.Application.Common.Exceptions;
 using TaskManagerPro.Blazor.Application.Common.Interfaces;
@@ -14,19 +15,26 @@ public class RegisterCommandHandlerTests
     private readonly IRepository<AppUser> _usersRepo;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUserRegistrationService _registrationService;
+    private readonly IEmailService _emailService;
+    private readonly IEmailVerificationSettings _verificationSettings;
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
     {
-        _unitOfWork          = Substitute.For<IUnitOfWork>();
-        _usersRepo           = Substitute.For<IRepository<AppUser>>();
-        _passwordHasher      = Substitute.For<IPasswordHasher>();
-        _registrationService = Substitute.For<IUserRegistrationService>();
+        _unitOfWork           = Substitute.For<IUnitOfWork>();
+        _usersRepo            = Substitute.For<IRepository<AppUser>>();
+        _passwordHasher       = Substitute.For<IPasswordHasher>();
+        _registrationService  = Substitute.For<IUserRegistrationService>();
+        _emailService         = Substitute.For<IEmailService>();
+        _verificationSettings = Substitute.For<IEmailVerificationSettings>();
 
         _unitOfWork.Users.Returns(_usersRepo);
         _passwordHasher.Hash(Arg.Any<string>()).Returns("hashed_password");
+        _verificationSettings.ExpirationMinutes.Returns(60);
+        _verificationSettings.BaseUrl.Returns("http://localhost:5026");
 
-        _handler = new RegisterCommandHandler(_unitOfWork, _passwordHasher, _registrationService);
+        _handler = new RegisterCommandHandler(_unitOfWork, _passwordHasher, _registrationService, _emailService,
+            _verificationSettings, Substitute.For<ILogger<RegisterCommandHandler>>());
     }
 
     [Fact]

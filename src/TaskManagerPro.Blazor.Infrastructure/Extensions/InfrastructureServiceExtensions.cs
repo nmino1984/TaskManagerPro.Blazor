@@ -47,6 +47,8 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IJwtTokenGenerator, JwtTokenGeneratorService>();
         services.AddScoped<IUserRegistrationService, UserRegistrationService>();
         services.AddScoped<IIdentityUserService, IdentityUserService>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddSingleton<IEmailVerificationSettings, EmailVerificationSettings>();
 
         // Open-generic registration runs all FluentValidation validators before each handler
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

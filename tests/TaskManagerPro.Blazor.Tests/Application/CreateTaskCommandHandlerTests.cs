@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask;
 using TaskManagerPro.Blazor.Domain.Entities;
@@ -23,7 +24,7 @@ public class CreateTaskCommandHandlerTests
         _unitOfWork.Tasks.Returns(_tasksRepo);
         _unitOfWork.Notifications.Returns(_notificationsRepo);
 
-        _handler = new CreateTaskCommandHandler(_unitOfWork);
+        _handler = new CreateTaskCommandHandler(_unitOfWork, Substitute.For<ILogger<CreateTaskCommandHandler>>());
     }
 
     [Fact]

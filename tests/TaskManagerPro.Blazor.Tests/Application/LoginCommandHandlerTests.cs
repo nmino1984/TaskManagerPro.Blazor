@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TaskManagerPro.Blazor.Application.Common.Exceptions;
 using TaskManagerPro.Blazor.Application.Common.Interfaces;
@@ -25,7 +26,8 @@ public class LoginCommandHandlerTests
 
         _unitOfWork.Users.Returns(_usersRepo);
 
-        _handler = new LoginCommandHandler(_unitOfWork, _passwordHasher, _jwtGenerator);
+        _handler = new LoginCommandHandler(_unitOfWork, _passwordHasher, _jwtGenerator,
+            Substitute.For<ILogger<LoginCommandHandler>>());
     }
 
     [Fact]
@@ -40,7 +42,7 @@ public class LoginCommandHandlerTests
                   .Returns(new List<AppUser> { user });
 
         _passwordHasher.Verify("secret", user.PasswordHash).Returns(true);
-        _jwtGenerator.GenerateToken(Arg.Any<Guid>(), user.Email, user.FirstName, user.LastName)
+        _jwtGenerator.GenerateToken(Arg.Any<Guid>(), user.Email, user.FirstName, user.LastName, Arg.Any<bool>())
                      .Returns(("tok_abc", expires));
 
         var result = await _handler.Handle(new LoginCommand("jane@test.com", "secret"), CancellationToken.None);

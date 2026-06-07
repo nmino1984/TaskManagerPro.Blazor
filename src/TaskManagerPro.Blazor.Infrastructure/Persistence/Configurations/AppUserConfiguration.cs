@@ -17,6 +17,11 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.Property(u => u.Email).IsRequired().HasMaxLength(256);
         builder.Property(u => u.PasswordHash).IsRequired();
 
+        // Backing fields — EF maps these via the read-only property expression
+        builder.Property(u => u.IsEmailVerified).HasField("_isEmailVerified").HasDefaultValue(false);
+        builder.Property(u => u.VerificationToken).HasField("_verificationToken").HasMaxLength(64);
+        builder.Property(u => u.VerificationTokenExpiry).HasField("_verificationTokenExpiry");
+
         builder.HasIndex(u => u.Email).IsUnique();
     }
 }

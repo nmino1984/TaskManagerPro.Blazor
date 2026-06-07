@@ -5,5 +5,6 @@ public record LoginResult(
     string Token,
     Guid UserId,
     string Email,
-    DateTime ExpiresAt
+    DateTime ExpiresAt,
+    bool IsEmailVerified = true
 );

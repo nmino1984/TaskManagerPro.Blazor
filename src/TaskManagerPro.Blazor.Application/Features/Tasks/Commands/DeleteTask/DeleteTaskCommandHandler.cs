@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using TaskManagerPro.Blazor.Application.Common.Exceptions;
 using TaskManagerPro.Blazor.Domain.Entities;
 using TaskManagerPro.Blazor.Domain.Interfaces;
@@ -10,10 +11,12 @@ namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.DeleteTask;
 public class DeleteTaskCommandHandler : IRequestHandler<DeleteTaskCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<DeleteTaskCommandHandler> _logger;
 
-    public DeleteTaskCommandHandler(IUnitOfWork unitOfWork)
+    public DeleteTaskCommandHandler(IUnitOfWork unitOfWork, ILogger<DeleteTaskCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task Handle(DeleteTaskCommand request, CancellationToken cancellationToken)
@@ -29,5 +32,6 @@ public class DeleteTaskCommandHandler : IRequestHandler<DeleteTaskCommand>
 
         await _unitOfWork.Tasks.DeleteAsync(task, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        _logger.LogWarning("Task deleted: (Id: {TaskId}) by User {UserId}", request.Id, request.UserId);
     }
 }

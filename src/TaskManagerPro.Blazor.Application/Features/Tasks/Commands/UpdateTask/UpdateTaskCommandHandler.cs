@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using TaskManagerPro.Blazor.Application.Common.Exceptions;
 using TaskManagerPro.Blazor.Domain.Entities;
 using TaskManagerPro.Blazor.Domain.Enums;
@@ -12,10 +13,12 @@ namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.UpdateTask;
 public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<UpdateTaskCommandHandler> _logger;
 
-    public UpdateTaskCommandHandler(IUnitOfWork unitOfWork)
+    public UpdateTaskCommandHandler(IUnitOfWork unitOfWork, ILogger<UpdateTaskCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task Handle(UpdateTaskCommand request, CancellationToken cancellationToken)
@@ -69,5 +72,11 @@ public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand>
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (task.Status != previousStatus)
+            _logger.LogInformation("Task {TaskId} status changed to {NewStatus} by User {UserId}", task.Id, task.Status, task.UserId);
+
+        if (request.AssignedToUserId.HasValue && request.AssignedToUserId != previousAssignedTo)
+            _logger.LogInformation("Task {TaskId} assigned to User {AssignedUserId} by User {UserId}", task.Id, request.AssignedToUserId.Value, task.UserId);
     }
 }

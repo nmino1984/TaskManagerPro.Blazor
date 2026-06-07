@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using TaskManagerPro.Blazor.Domain.Entities;
 using TaskManagerPro.Blazor.Domain.Interfaces;
 
@@ -7,10 +8,12 @@ namespace TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask;
 public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CreateTaskCommandHandler> _logger;
 
-    public CreateTaskCommandHandler(IUnitOfWork unitOfWork)
+    public CreateTaskCommandHandler(IUnitOfWork unitOfWork, ILogger<CreateTaskCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Guid> Handle(CreateTaskCommand request, CancellationToken cancellationToken)
@@ -31,6 +34,7 @@ public class CreateTaskCommandHandler : IRequestHandler<CreateTaskCommand, Guid>
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Task created: '{Title}' (Id: {TaskId}) by User {UserId}", task.Title, task.Id, request.UserId);
         return task.Id;
     }
 }

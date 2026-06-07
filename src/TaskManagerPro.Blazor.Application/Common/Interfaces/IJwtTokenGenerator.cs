@@ -7,5 +7,5 @@ namespace TaskManagerPro.Blazor.Application.Common.Interfaces;
 public interface IJwtTokenGenerator
 {
     /// <summary>Returns the signed token string and its UTC expiry timestamp.</summary>
-    (string Token, DateTime ExpiresAt) GenerateToken(Guid userId, string email, string firstName, string lastName);
+    (string Token, DateTime ExpiresAt) GenerateToken(Guid userId, string email, string firstName, string lastName, bool isEmailVerified);
 }

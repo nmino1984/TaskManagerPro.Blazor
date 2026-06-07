@@ -22,7 +22,7 @@ public class JwtTokenGeneratorService : IJwtTokenGenerator
 
     // Reads Jwt:Key, Jwt:Issuer, Jwt:Audience, and Jwt:ExpirationMinutes from configuration
     public (string Token, DateTime ExpiresAt) GenerateToken(
-        Guid userId, string email, string firstName, string lastName)
+        Guid userId, string email, string firstName, string lastName, bool isEmailVerified)
     {
         var key      = _configuration["Jwt:Key"]      ?? throw new InvalidOperationException("Jwt:Key is not configured.");
         var issuer   = _configuration["Jwt:Issuer"]   ?? throw new InvalidOperationException("Jwt:Issuer is not configured.");
@@ -39,7 +39,8 @@ public class JwtTokenGeneratorService : IJwtTokenGenerator
             new Claim(JwtRegisteredClaimNames.Email,      email),
             new Claim(JwtRegisteredClaimNames.GivenName,  firstName),
             new Claim(JwtRegisteredClaimNames.FamilyName, lastName),
-            new Claim(JwtRegisteredClaimNames.Jti,        Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Jti,        Guid.NewGuid().ToString()),
+            new Claim("email_verified",                   isEmailVerified.ToString().ToLower())
         ];
 
         var expiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes);

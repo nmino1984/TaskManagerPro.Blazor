@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using MudBlazor.Services;
+using Serilog;
 using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.CreateTask;
 using TaskManagerPro.Blazor.Infrastructure.Extensions;
 using TaskManagerPro.Blazor.Infrastructure.Identity;
@@ -14,6 +15,21 @@ using TaskManagerPro.Blazor.Web.Components;
 using TaskManagerPro.Blazor.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const string outputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate: outputTemplate)
+    .WriteTo.File(
+        path: "logs/taskmanager-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        outputTemplate: outputTemplate)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -62,7 +78,10 @@ builder.Services.AddScoped<AuthenticationStateProvider>(
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<NotificationCountService>();
 
-var app = builder.Build();
+WebApplication app;
+try
+{
+app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -89,3 +108,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

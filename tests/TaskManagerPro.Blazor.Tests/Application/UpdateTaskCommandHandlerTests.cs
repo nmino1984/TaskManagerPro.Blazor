@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TaskManagerPro.Blazor.Application.Common.Exceptions;
 using TaskManagerPro.Blazor.Application.Features.Tasks.Commands.UpdateTask;
@@ -24,7 +25,7 @@ public class UpdateTaskCommandHandlerTests
         _unitOfWork.Tasks.Returns(_tasksRepo);
         _unitOfWork.Notifications.Returns(_notificationsRepo);
 
-        _handler = new UpdateTaskCommandHandler(_unitOfWork);
+        _handler = new UpdateTaskCommandHandler(_unitOfWork, Substitute.For<ILogger<UpdateTaskCommandHandler>>());
     }
 
     private static TaskItem BuildTask(Guid? userId = null, Guid? assignedToUserId = null)

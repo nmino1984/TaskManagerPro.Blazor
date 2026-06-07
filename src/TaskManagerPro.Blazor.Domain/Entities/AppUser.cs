@@ -28,6 +28,29 @@ public class AppUser : BaseEntity
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
 
+    private bool _isEmailVerified = false;
+    public bool IsEmailVerified => _isEmailVerified;
+
+    private string? _verificationToken;
+    public string? VerificationToken => _verificationToken;
+
+    private DateTime? _verificationTokenExpiry;
+    public DateTime? VerificationTokenExpiry => _verificationTokenExpiry;
+
+    public void SetVerificationToken(string token, DateTime expiry)
+    {
+        _verificationToken = token;
+        _verificationTokenExpiry = expiry;
+        _isEmailVerified = false;
+    }
+
+    public void VerifyEmail()
+    {
+        _isEmailVerified = true;
+        _verificationToken = null;
+        _verificationTokenExpiry = null;
+    }
+
     public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

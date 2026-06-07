@@ -3,10 +3,13 @@
 @rendermode InteractiveServer
 
 @using System.ComponentModel.DataAnnotations
+@using MediatR
 @using TaskManagerPro.Blazor.Web.Services
+@using TaskManagerPro.Blazor.Application.Features.Auth.Commands.ResendVerificationEmail
 
 @inject AuthService AuthService
 @inject NavigationManager Navigation
+@inject IMediator Mediator
 
 <PageTitle>Sign In — TaskManager Pro</PageTitle>
 
@@ -22,11 +25,49 @@
             @if (!string.IsNullOrEmpty(_errorMessage))
             {
                 <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true" ShowCloseIcon="true"
-                          CloseIconClicked="() => _errorMessage = string.Empty">
+                          CloseIconClicked="() => { _errorMessage = string.Empty; _showResend = false; }">
                     @_errorMessage
                 </MudAlert>
+
+                @if (_showResend)
+                {
+                    @if (_resendSuccess)
+                    {
+                        <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true">
+                            A new verification email has been sent. Please check your inbox.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTextField T="string"
+                                      @bind-Value="_resendEmail"
+                                      Label="Enter your email to resend verification"
+                                      InputType="InputType.Email"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Email"
+                                      AdornmentColor="Color.Primary"
+                                      Variant="Variant.Outlined"
+                                      Class="mb-3"
+                                      Disabled="_resendLoading" />
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                                   Size="Size.Large" OnClick="ResendVerificationAsync" Disabled="_resendLoading"
+                                   Class="mb-4">
+                            @if (_resendLoading)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Sending…</span>
+                            }
+                            else
+                            {
+                                <span>Resend Verification Email</span>
+                            }
+                        </MudButton>
+                    }
+                }
             }
 
+            @if (!_showResend)
+            {
             <EditForm Model="_model" OnValidSubmit="LoginAsync">
                 <DataAnnotationsValidator />
 
@@ -74,6 +115,7 @@
                     }
                 </MudButton>
             </EditForm>
+            }
         </MudCardContent>
 
         <MudCardActions Class="justify-center pb-4">
@@ -101,6 +143,10 @@
     private bool _isLoading;
     private bool _showPassword;
     private string _errorMessage = string.Empty;
+    private bool _showResend;
+    private string _resendEmail = string.Empty;
+    private bool _resendLoading;
+    private bool _resendSuccess;
 
     private async Task LoginAsync()
     {
@@ -115,11 +161,29 @@
         catch (Exception ex)
         {
             _errorMessage = ex.Message;
+            if (_errorMessage.Contains("verification link has expired"))
+            {
+                _showResend = true;
+                _resendEmail = _model.Email;
+            }
         }
         finally
         {
             _isLoading = false;
         }
+    }
+
+    private async Task ResendVerificationAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_resendEmail)) return;
+
+        _resendLoading = true;
+        var result = await Mediator.Send(new ResendVerificationEmailCommand(_resendEmail));
+        _resendLoading = false;
+        _resendSuccess = result.Success;
+
+        if (!result.Success)
+            _errorMessage = result.Message;
     }
 
     private string GetReturnUrl()
