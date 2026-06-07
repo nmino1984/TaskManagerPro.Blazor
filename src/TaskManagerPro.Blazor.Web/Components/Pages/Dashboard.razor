@@ -1,4 +1,4 @@
-@page "/"
+﻿@page "/"
 @rendermode InteractiveServer
 @inherits TaskManagerPro.Blazor.Web.Pages.AuthenticatedPageBase
 
@@ -27,7 +27,7 @@
         <MudPaper Class="pa-4" Elevation="2">
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                 <div>
-                    <MudText Typo="Typo.overline" Color="Color.Secondary">Total Tasks</MudText>
+                    <MudText Typo="Typo.overline" Color="Color.Secondary">My Tasks</MudText>
                     <MudText Typo="Typo.h4">@_totalTasks</MudText>
                 </div>
                 <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Primary" Size="Size.Large" />
@@ -71,6 +71,58 @@
     </MudItem>
 </MudGrid>
 
+@* Charts *@
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="0">
+    <MudText Typo="Typo.h6" Class="mr-4">Charts</MudText>
+    <MudButtonGroup OverrideStyles="false">
+        <MudButton Variant="@(!_showAllTasks ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary" Size="Size.Small"
+                   OnClick="@(() => SwitchChartFilter(false))">
+            My Tasks
+        </MudButton>
+        <MudButton Variant="@(_showAllTasks ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary" Size="Size.Small"
+                   OnClick="@(() => SwitchChartFilter(true))">
+            All Tasks
+        </MudButton>
+    </MudButtonGroup>
+</MudStack>
+
+<MudGrid Spacing="3" Class="mb-6">
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Tasks by Status</MudText>
+            <MudChart T="double" ChartType="ChartType.Donut"
+                      ChartSeries="@_statusSeries"
+                      ChartLabels="@_statusLabels"
+                      Width="100%" Height="300px"
+                      ChartOptions="@_statusOptions" />
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Tasks by Priority</MudText>
+            <MudChart T="double" ChartType="ChartType.Bar"
+                      ChartSeries="@_prioritySeries"
+                      ChartLabels="@_priorityLabels"
+                      Width="100%" Height="300px"
+                      ChartOptions="@_priorityOptions" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (_showMonthChart)
+{
+    <MudPaper Elevation="2" Class="pa-4 mb-6">
+        <MudText Typo="Typo.h6" Class="mb-3">Tasks Created (last 6 months)</MudText>
+        <MudChart T="double" ChartType="ChartType.Line"
+                  ChartSeries="@_monthSeries"
+                  ChartLabels="@_monthLabels"
+                  Width="100%" Height="300px"
+                  ChartOptions="@_monthOptions" />
+    </MudPaper>
+}
+
 <MudText Typo="Typo.h6" Class="mb-3">Recent Tasks</MudText>
 
 @if (_recentTasks.Any())
@@ -81,6 +133,7 @@
             <MudTh>Priority</MudTh>
             <MudTh>Status</MudTh>
             <MudTh>Due Date</MudTh>
+            <MudTh>Role</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Title">
@@ -109,6 +162,9 @@
                     <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
                 }
             </MudTd>
+            <MudTd DataLabel="Role">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@GetTaskRole(context)</MudText>
+            </MudTd>
         </RowTemplate>
     </MudTable>
 }
@@ -127,20 +183,45 @@ else if (!_isLoading)
 }
 
 @code {
+    private Guid _userId;
     private int _totalTasks;
     private int _inProgressCount;
     private int _completedCount;
     private int _overdueCount;
     private IList<TaskItemDto> _recentTasks = new List<TaskItemDto>();
-    private bool _isLoading = true;
+    private IList<TaskItemDto> _allTasks    = new List<TaskItemDto>();
+    private IList<TaskItemDto> _myTasks     = new List<TaskItemDto>();
+    private bool _isLoading    = true;
+    private bool _showAllTasks = false;
 
-    // OnInitializedAsync runs during SSR where localStorage is inaccessible and "sub" claim is null;
+    private List<ChartSeries<double>> _statusSeries   = [];
+    private string[]                  _statusLabels   = ["Pending", "In Progress", "Completed", "Cancelled"];
+    private List<ChartSeries<double>> _prioritySeries = [];
+    private string[]                  _priorityLabels = ["Low", "Medium", "High", "Critical"];
+    private List<ChartSeries<double>> _monthSeries    = [];
+    private string[]                  _monthLabels    = [];
+    private bool                      _showMonthChart;
+
+    private readonly ChartOptions _statusOptions = new()
+    {
+        ChartPalette = ["#2196F3", "#FF9800", "#4CAF50", "#9E9E9E"]
+    };
+    private readonly ChartOptions _priorityOptions = new()
+    {
+        ChartPalette = ["#4CAF50", "#FFC107", "#FF9800", "#F44336"]
+    };
+    private readonly ChartOptions _monthOptions = new()
+    {
+        ChartPalette = ["#2196F3"]
+    };
+
+    // OnInitializedAsync runs during SSR where localStorage is inaccessible and `sub` claim is null;
     // firstRender is the first safe point after the Blazor Server circuit is fully connected
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var authState    = await AuthStateProvider.GetAuthenticationStateAsync();
         var userIdString = authState.User.FindFirst("sub")?.Value;
 
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
@@ -149,27 +230,94 @@ else if (!_isLoading)
             return;
         }
 
+        _userId = userId;
+
         try
         {
             var result = await Mediator.Send(new GetAllTasksQuery(userId, Page: 1, PageSize: 1000));
-            var tasks  = result.Items;
+            _allTasks  = result.Items;
+            _myTasks   = _allTasks.Where(t => t.AssignedToUserId == userId).ToList();
 
-            _totalTasks      = tasks.Count;
-            _inProgressCount = tasks.Count(t => t.Status == WorkTaskStatus.InProgress);
-            _completedCount  = tasks.Count(t => t.Status == WorkTaskStatus.Completed);
-            _overdueCount    = tasks.Count(t =>
+            _totalTasks      = _myTasks.Count;
+            _inProgressCount = _myTasks.Count(t => t.Status == WorkTaskStatus.InProgress);
+            _completedCount  = _myTasks.Count(t => t.Status == WorkTaskStatus.Completed);
+            _overdueCount    = _myTasks.Count(t =>
                 t.DueDate.HasValue
                 && t.DueDate.Value.Date < DateTime.UtcNow.Date
                 && t.Status != WorkTaskStatus.Completed
                 && t.Status != WorkTaskStatus.Cancelled);
 
-            _recentTasks = tasks.OrderByDescending(t => t.CreatedAt).Take(5).ToList();
+            _recentTasks = _allTasks.OrderByDescending(t => t.CreatedAt).Take(5).ToList();
+
+            BuildCharts(_myTasks);
         }
         finally
         {
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private void SwitchChartFilter(bool showAll)
+    {
+        _showAllTasks = showAll;
+        BuildCharts(_showAllTasks ? _allTasks : _myTasks);
+        StateHasChanged();
+    }
+
+    private void BuildCharts(IList<TaskItemDto> tasks)
+    {
+        _statusSeries =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Status",
+                Data = new ChartData<double>(new double[]
+                {
+                    (double)tasks.Count(t => t.Status == WorkTaskStatus.Pending),
+                    (double)tasks.Count(t => t.Status == WorkTaskStatus.InProgress),
+                    (double)tasks.Count(t => t.Status == WorkTaskStatus.Completed),
+                    (double)tasks.Count(t => t.Status == WorkTaskStatus.Cancelled)
+                })
+            }
+        ];
+
+        _prioritySeries =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Tasks",
+                Data = new ChartData<double>(new double[]
+                {
+                    (double)tasks.Count(t => t.Priority == TaskPriority.Low),
+                    (double)tasks.Count(t => t.Priority == TaskPriority.Medium),
+                    (double)tasks.Count(t => t.Priority == TaskPriority.High),
+                    (double)tasks.Count(t => t.Priority == TaskPriority.Critical)
+                })
+            }
+        ];
+
+        var now    = DateTime.UtcNow;
+        var months = Enumerable.Range(0, 6).Select(i => now.AddMonths(-5 + i)).ToList();
+
+        _monthLabels = months.Select(m => m.ToString("MMM yy")).ToArray();
+        double[] monthlyCounts = months
+            .Select(m => (double)tasks.Count(t => t.CreatedAt.Year == m.Year && t.CreatedAt.Month == m.Month))
+            .ToArray();
+
+        _monthSeries    = [new ChartSeries<double> { Name = "Created", Data = new ChartData<double>(monthlyCounts) }];
+        _showMonthChart = months.Count(m => tasks.Any(t => t.CreatedAt.Year == m.Year && t.CreatedAt.Month == m.Month)) >= 2;
+    }
+
+    private string GetTaskRole(TaskItemDto task)
+    {
+        bool isAssigned = task.AssignedToUserId == _userId;
+        bool isCreator  = task.UserId == _userId;
+
+        if (isAssigned && isCreator) return "Mine";
+        if (isAssigned)              return "Assigned to me";
+        if (isCreator)               return "Created by me";
+        return "—";
     }
 
     private static Color GetPriorityColor(TaskPriority priority) => priority switch
