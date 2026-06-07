@@ -34,6 +34,11 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .HasField("_dueDate")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        builder.Property(t => t.OverdueNotified)
+            .HasField("_overdueNotified")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .HasDefaultValue(false);
+
         builder.Property(t => t.AssignedToUserId).IsRequired(false);
 
         builder.HasOne(t => t.User)

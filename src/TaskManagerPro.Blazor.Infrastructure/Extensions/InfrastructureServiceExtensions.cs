@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TaskManagerPro.Blazor.Application.Common.Behaviors;
 using TaskManagerPro.Blazor.Application.Common.Interfaces;
 using TaskManagerPro.Blazor.Domain.Interfaces;
+using TaskManagerPro.Blazor.Infrastructure.BackgroundJobs;
 using TaskManagerPro.Blazor.Infrastructure.Identity;
 using TaskManagerPro.Blazor.Infrastructure.Persistence.Context;
 using TaskManagerPro.Blazor.Infrastructure.Persistence.Repositories;
@@ -53,6 +54,8 @@ public static class InfrastructureServiceExtensions
 
         // Open-generic registration runs all FluentValidation validators before each handler
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+        services.AddHostedService<OverdueNotificationJob>();
 
         return services;
     }

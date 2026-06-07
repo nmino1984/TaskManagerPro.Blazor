@@ -136,6 +136,7 @@
             if (Guid.TryParse(userIdClaim, out var userId))
             {
                 _userId = userId;
+                NotificationCount.Initialize(_userId);
                 await LoadNotificationCountAsync();
             }
 

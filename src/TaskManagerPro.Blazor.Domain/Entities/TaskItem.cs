@@ -7,6 +7,7 @@ public class TaskItem : BaseEntity
 {
     private WorkTaskStatus _status = WorkTaskStatus.Pending;
     private DateTime? _dueDate;
+    private bool _overdueNotified = false;
 
     // Required by EF Core — not for direct use
     private TaskItem() { }
@@ -32,6 +33,8 @@ public class TaskItem : BaseEntity
 
     // EF Core writes via _status; transitions go through the methods below, never via direct assignment
     public WorkTaskStatus Status => _status;
+
+    public bool OverdueNotified => _overdueNotified;
 
     public Guid UserId { get; private set; }
     public Guid? AssignedToUserId { get; private set; }
@@ -77,4 +80,6 @@ public class TaskItem : BaseEntity
     {
         _status = WorkTaskStatus.Pending;
     }
+
+    public void MarkOverdueNotified() => _overdueNotified = true;
 }
