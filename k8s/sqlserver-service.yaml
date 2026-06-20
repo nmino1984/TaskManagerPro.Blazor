@@ -1,0 +1,13 @@
+# Internal-only service — ClusterIP keeps the DB off the public network.
+# The name "taskmanager-sqlserver" is the DNS hostname the webapp uses in its connection string.
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskmanager-sqlserver
+spec:
+  type: ClusterIP
+  selector:
+    app: taskmanager-sqlserver
+  ports:
+    - port: 1433
+      targetPort: 1433

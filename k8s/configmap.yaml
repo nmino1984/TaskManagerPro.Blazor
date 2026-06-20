@@ -1,0 +1,8 @@
+# Non-sensitive app configuration — safe to version-control.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taskmanager-config
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  EmailVerification__BaseUrl: "http://localhost:30080"

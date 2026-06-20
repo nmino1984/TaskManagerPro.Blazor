@@ -32,6 +32,9 @@ x86/
 *.db-wal
 appsettings.Development.json
 
+# Docker Compose - sensitive variables (passwords, API keys)
+.env
+
 # IDE
 .idea/
 *.swp

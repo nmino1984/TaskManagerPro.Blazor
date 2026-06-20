@@ -188,3 +188,78 @@ TaskManagerPro.Blazor/
 ## License
 
 [MIT](LICENSE)
+
+---
+
+## 🐳 Docker
+
+The app ships with a `docker-compose.yml` that brings up the full stack — SQL Server and the Blazor app — with a single command.
+
+### Prerequisites
+- Docker Desktop running
+
+### Run with Docker Compose
+
+```bash
+# Copy the example env file and fill in your real values
+cp .env.example .env
+
+# Start everything
+docker compose up --build -d
+
+# Follow logs
+docker compose logs -f webapp
+
+# Stop
+docker compose down
+```
+
+### Environment variables
+
+Credentials live in `.env` (gitignored — never committed). Copy `.env.example` to see what's needed:
+- `SA_PASSWORD` — SQL Server sa password
+- `JWT_KEY` — signing key for JWT tokens (min 32 chars)
+- `SENDGRID_API_KEY`
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+
+---
+
+## ☸️ Kubernetes
+
+Kubernetes manifests are in `k8s/`. Tested locally with minikube.
+
+### Prerequisites
+- Docker Desktop
+- [minikube](https://minikube.sigs.k8s.io/docs/start/)
+- kubectl
+
+### Deploy to minikube
+
+```bash
+minikube start --driver=docker --cpus=2 --memory=3072
+
+# Build and load the image into minikube's local registry
+docker build -t taskmanagerproblazor-webapp:latest .
+minikube image load taskmanagerproblazor-webapp:latest
+
+# Apply manifests — order matters (PVC and DB before the app)
+kubectl apply -f k8s/sqlserver-pvc.yaml
+kubectl apply -f k8s/sqlserver-deployment.yaml
+kubectl apply -f k8s/sqlserver-service.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+
+# Wait for both pods to be ready
+kubectl wait --for=condition=ready pod -l app=taskmanager-sqlserver --timeout=120s
+kubectl wait --for=condition=ready pod -l app=taskmanager-webapp --timeout=120s
+
+# Get the access URL (keep this terminal open — it maintains the tunnel)
+minikube service taskmanager-webapp-service --url
+```
+
+### Health endpoints
+
+- `GET /health/live` — liveness: process is up
+- `GET /health/ready` — readiness: process is up and SQL Server is reachable

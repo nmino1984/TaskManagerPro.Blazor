@@ -1,0 +1,14 @@
+# NodePort exposes the webapp outside the cluster without needing an Ingress.
+# Fixed nodePort 30080 keeps the URL predictable in local/minikube setups.
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskmanager-webapp-service
+spec:
+  type: NodePort
+  selector:
+    app: taskmanager-webapp
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080

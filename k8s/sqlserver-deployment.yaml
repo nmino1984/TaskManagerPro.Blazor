@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskmanager-sqlserver
+  namespace: default
+spec:
+  replicas: 1
+  # Recreate instead of RollingUpdate: the PVC is ReadWriteOnce,
+  # so two pods can't mount it simultaneously.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: taskmanager-sqlserver
+  template:
+    metadata:
+      labels:
+        app: taskmanager-sqlserver
+    spec:
+      containers:
+        - name: sqlserver
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: taskmanager-secrets
+                  key: sa-password
+            - name: MSSQL_PID
+              value: "Developer"
+          ports:
+            - containerPort: 1433
+          volumeMounts:
+            - name: sqlserver-data
+              mountPath: /var/opt/mssql
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - >-
+                  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C -Q "SELECT 1" -b -o /dev/null
+                  || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+      volumes:
+        - name: sqlserver-data
+          persistentVolumeClaim:
+            claimName: sqlserver-data

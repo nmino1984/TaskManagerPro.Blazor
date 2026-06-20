@@ -1,0 +1,23 @@
+# Artefactos de build locales (Windows): si se copian al contexto, sus
+# project.assets.json con rutas absolutas de Windows rompen el restore/publish
+# dentro del contenedor Linux.
+**/bin/
+**/obj/
+
+# Visual Studio / IDE
+.vs/
+.vscode/
+*.user
+
+# Git
+.git/
+.gitignore
+
+# Logs locales
+**/logs/
+
+# Documentación (no hace falta en la imagen)
+README.md
+LEEME.md
+CLAUDE.md
+LICENSE.txt

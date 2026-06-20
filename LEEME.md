@@ -196,6 +196,59 @@ TaskManagerPro.Blazor/
 
 ---
 
+## 🐳 Docker
+
+El proyecto incluye un `docker-compose.yml` que levanta el stack completo — SQL Server y la app Blazor — con un solo comando.
+
+### Requisitos
+- Docker Desktop corriendo
+
+### Levantar con Docker Compose
+
+```bash
+cp .env.example .env   # rellenar con valores reales
+docker compose up --build -d
+docker compose logs -f webapp
+docker compose down
+```
+
+Las credenciales van en `.env` (gitignoreado). Copiar `.env.example` para ver qué variables necesita.
+
+---
+
+## ☸️ Kubernetes
+
+Los manifiestos están en `k8s/`. Probado localmente con minikube.
+
+### Desplegar en minikube
+
+```bash
+minikube start --driver=docker --cpus=2 --memory=3072
+
+docker build -t taskmanagerproblazor-webapp:latest .
+minikube image load taskmanagerproblazor-webapp:latest
+
+kubectl apply -f k8s/sqlserver-pvc.yaml
+kubectl apply -f k8s/sqlserver-deployment.yaml
+kubectl apply -f k8s/sqlserver-service.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+
+kubectl wait --for=condition=ready pod -l app=taskmanager-sqlserver --timeout=120s
+kubectl wait --for=condition=ready pod -l app=taskmanager-webapp --timeout=120s
+
+minikube service taskmanager-webapp-service --url
+```
+
+### Health endpoints
+
+- `GET /health/live` — liveness: el proceso responde
+- `GET /health/ready` — readiness: el proceso responde y SQL Server está disponible
+
+---
+
 ## Licencia
 
 [MIT](LICENSE)

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskmanager-webapp
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taskmanager-webapp
+  template:
+    metadata:
+      labels:
+        app: taskmanager-webapp
+    spec:
+      containers:
+        - name: taskmanager-webapp
+          image: docker.io/library/taskmanagerproblazor-webapp:latest
+          imagePullPolicy: Never  # image loaded locally via minikube image load
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: taskmanager-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: taskmanager-secrets
+                  key: connectionstrings-defaultconnection
+            - name: EmailVerification__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: taskmanager-config
+                  key: EmailVerification__BaseUrl
+            - name: Jwt__Key
+              valueFrom:
+                secretKeyRef:
+                  name: taskmanager-secrets
+                  key: jwt-key
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          # initialDelaySeconds longer than liveness — migrations need to finish first
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
